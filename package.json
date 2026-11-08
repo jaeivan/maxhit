@@ -10,7 +10,8 @@
     "test": "node scripts/build-node.mjs tests/sample-bank.ts dist/sample-bank.mjs && node dist/sample-bank.mjs",
     "test:stress": "node scripts/build-node.mjs tests/stress.ts dist/stress.mjs && node dist/stress.mjs",
     "test:brute": "node scripts/build-node.mjs tests/brute-melee.ts dist/brute.mjs && node dist/brute.mjs",
-    "bench": "node scripts/build-node.mjs tests/bench.ts dist/bench.mjs && node dist/bench.mjs"
+    "bench": "node scripts/build-node.mjs tests/bench.ts dist/bench.mjs && node dist/bench.mjs",
+    "test:quests": "node scripts/build-node.mjs tests/quests.ts dist/quests.mjs && node dist/quests.mjs"
   },
   "license": "GPL-3.0-only",
   "devDependencies": {

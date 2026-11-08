@@ -8,6 +8,7 @@ import {
 import { MAGIC_WEAPONS } from '@/enums/EquipmentCategory';
 import { ammoApplicability, AmmoApplicability } from '@/lib/Equipment';
 import meta from './data/meta.json';
+import { Fight, StyleRule, styleRule } from './data/quests';
 import reqsRaw from './data/reqs.json';
 
 export type Family = 'melee' | 'ranged' | 'magic';
@@ -106,6 +107,7 @@ export interface OptimizeInput {
   excluded?: Set<number>;
   spellbooks: Spellbook[];
   families?: Family[];
+  fight?: Fight;
 }
 
 export interface Loadout {
@@ -132,11 +134,15 @@ export interface FamilyResult {
   budgetPlan: { buys: Upgrade[]; spent: number; loadout: Loadout } | null;
   evals: number;
   ms: number;
+  /** This style can't damage the target in this fight. */
+  blocked?: boolean;
+  /** Items the fight requires that you don't own (slot -> accepted item names). */
+  missing?: Partial<Record<Slot, string[]>>;
 }
 
 // ---------- variants ----------
 const BAD_VERSIONS = new Set(['Locked', 'Broken', "Emir's Arena", 'Soul Wars', '0']);
-const BAD_NAME = /\((Pete Kayer's Challenges|unobtainable item|Last Man Standing|beta|deadman|deadman mode|bh|Halloween event|historical|tournament)\)/i;
+const BAD_NAME = /\((nz|Pete Kayer's Challenges|unobtainable item|Last Man Standing|beta|deadman|deadman mode|bh|Halloween event|historical|tournament)\)/i;
 const ACTIVE_VERSIONS = ['Charged', 'Fully charged', 'Active', 'Activated'];
 const byNameVersion = new Map<string, EquipmentPiece>();
 for (const e of equipment) byNameVersion.set(`${e.name}#${e.version}`, e);
@@ -152,6 +158,32 @@ export function usableVariant(e: EquipmentPiece): EquipmentPiece {
   return e;
 }
 const isJunk = (e: EquipmentPiece) => BAD_VERSIONS.has(e.version) || BAD_NAME.test(e.name);
+
+// ---------- fight rules ----------
+const nameMatches = (item: EquipmentPiece, names: string[]) => {
+  const n = item.name.toLowerCase();
+  return names.some((r) => { const q = r.toLowerCase(); return n === q || n.startsWith(`${q} (`) || n.startsWith(`${q}#`); });
+};
+
+/** Damage multiplier a fight applies to a loadout (e.g. Slagilith without a pickaxe). */
+export function makeAdjust(rule: StyleRule | undefined) {
+  if (!rule?.damage?.length && rule?.otherwise === undefined) return undefined;
+  return (eq: PlayerEquipment, spell: Spell | null): number => {
+    for (const d of rule.damage ?? []) {
+      if (d.weapon && !(eq.weapon?.name.toLowerCase().includes(d.weapon.toLowerCase()))) continue;
+      if (d.ammo && !(eq.ammo?.name.toLowerCase().includes(d.ammo.toLowerCase()))) continue;
+      if (d.spell && !(spell?.name.toLowerCase().startsWith(d.spell.toLowerCase()))) continue;
+      return d.mult;
+    }
+    return rule.otherwise ?? 1;
+  };
+}
+
+export function applyAdjust(r: EvalResult | null, m: number): EvalResult | null {
+  if (!r || m === 1) return r;
+  const dps = r.dps * m;
+  return { ...r, dps, ttk: dps > 0 ? r.ttk / m : Infinity };
+}
 
 /** Map raw RuneLite item ids to engine equipment pieces (handles charged/degraded/cosmetic variants). */
 export function resolveOwned(ids: number[]): EquipmentPiece[] {
@@ -171,19 +203,35 @@ class Search {
   constructor(
     readonly f: Family, readonly monster: Monster, buffs: Buffs,
     readonly pool: Map<Slot, Cand[]>, readonly weapons: WeaponOpt[],
+    readonly rule?: StyleRule,
   ) {
     this.player = basePlayer({ ...SKILLS_PLACEHOLDER }, buffs);
+    this.adjust = makeAdjust(rule);
   }
+
+  adjust?: (eq: PlayerEquipment, spell: Spell | null) => number;
 
   score(eq: PlayerEquipment, spell: Spell | null, style?: EvalResult['style']): EvalResult | null {
     this.evals++;
-    return evaluate(this.player, this.monster, eq, this.f, spell, style);
+    const r = evaluate(this.player, this.monster, eq, this.f, spell, style);
+    return this.adjust ? applyAdjust(r, this.adjust(eq, spell)) : r;
   }
+
+  required(slot: Slot) { return !!this.rule?.require?.[slot]?.length; }
 
   /** Coordinate descent over non-weapon slots for a fixed weapon option. */
   descend(start: PlayerEquipment, w: WeaponOpt, maxPasses = 4, lockStyle = true): { eq: PlayerEquipment; r: EvalResult } | null {
     let eq = { ...start, weapon: w.weapon, ammo: w.ammo ?? start.ammo };
-    if (w.weapon?.isTwoHanded) eq.shield = null;
+    // a fight-required slot must always hold an allowed item (a set seed may have put something else there)
+    for (const slot of SLOTS) {
+      if (slot === 'weapon' || !this.required(slot)) continue;
+      const allowed = this.pool.get(slot) ?? [];
+      if (!allowed.some((c) => c.item.id === eq[slot]?.id)) eq[slot] = allowed[0]?.item ?? null;
+    }
+    if (w.weapon?.isTwoHanded) {
+      if (this.required('shield')) return null; // e.g. Elvarg: the shield is mandatory
+      eq.shield = null;
+    }
     const first = this.score(eq, w.spell);
     if (!first) return null;
     let cur: EvalResult = first;
@@ -196,7 +244,7 @@ class Search {
         if (slot === 'ammo' && w.lockAmmo) continue;
         const cands = this.pool.get(slot) ?? [];
         let bestEq: PlayerEquipment | null = null; let best: EvalResult = cur;
-        for (const c of [null, ...cands]) {
+        for (const c of (this.required(slot) ? cands : [null, ...cands])) {
           const item = c?.item ?? null;
           if (item?.id === eq[slot]?.id || (!item && !eq[slot])) continue;
           if (slot === 'ammo' && item && this.f === 'ranged'
@@ -216,8 +264,11 @@ class Search {
 
   run(seeds: PlayerEquipment[]): Loadout | null {
     if (!this.weapons.length) return null;
-    // 1. rough weapon ranking with no other gear
+    // 1. rough weapon ranking with no other gear (except items the fight requires)
     const empty = emptyEquipment();
+    for (const slot of SLOTS) {
+      if (slot !== 'weapon' && this.required(slot)) empty[slot] = this.pool.get(slot)?.[0]?.item ?? null;
+    }
     const rough = this.weapons
       .map((w) => ({ w, r: this.score({ ...empty, weapon: w.weapon, ammo: w.ammo }, w.spell) }))
       .filter((x) => x.r)
@@ -269,11 +320,15 @@ const SKILLS_PLACEHOLDER: PlayerSkills = {
 
 interface WeaponOpt { weapon: EquipmentPiece | null; ammo: EquipmentPiece | null; spell: Spell | null; lockAmmo?: boolean }
 
-function buildWeaponOpts(f: Family, weapons: Cand[], ammo: Cand[], spellList: Spell[]): WeaponOpt[] {
+function buildWeaponOpts(f: Family, weapons: Cand[], ammo: Cand[], spellList: Spell[], rule?: StyleRule): WeaponOpt[] {
   const out: WeaponOpt[] = [];
+  const shieldRequired = !!rule?.require?.shield?.length;
+  const weaponRequired = !!rule?.require?.weapon?.length;
   for (const { item: w } of weapons) {
+    if (shieldRequired && w.isTwoHanded) continue; // e.g. Elvarg: the anti-dragon shield must stay on
     if (f === 'magic') {
-      if (isPowered(w)) out.push({ weapon: w, ammo: null, spell: null });
+      // a powered staff's built-in spell isn't one of the allowed spells
+      if (isPowered(w)) { if (!rule?.spells) out.push({ weapon: w, ammo: null, spell: null }); }
       else for (const s of spellList) out.push({ weapon: w, ammo: null, spell: s });
     } else if (f === 'ranged') {
       const valid = ammo.filter((a) => ammoApplicability(w.id, a.item.id) === AmmoApplicability.INCLUDED);
@@ -290,8 +345,10 @@ function buildWeaponOpts(f: Family, weapons: Cand[], ammo: Cand[], spellList: Sp
       out.push({ weapon: w, ammo: null, spell: null });
     }
   }
-  if (f === 'magic') for (const s of spellList) out.push({ weapon: null, ammo: null, spell: s });
-  if (f === 'melee') out.push({ weapon: null, ammo: null, spell: null });
+  if (!weaponRequired) {
+    if (f === 'magic') for (const s of spellList) out.push({ weapon: null, ammo: null, spell: s });
+    if (f === 'melee') out.push({ weapon: null, ammo: null, spell: null });
+  }
   return out;
 }
 
@@ -310,9 +367,15 @@ export function weaponFits(e: EquipmentPiece, f: Family): boolean {
   return styles.some((s) => (f === 'ranged' ? s.type === 'ranged' : ['stab', 'slash', 'crush'].includes(s.type as string)));
 }
 
-function buildPool(f: Family, cands: Cand[], skills: PlayerSkills): Map<Slot, Cand[]> {
+function buildPool(f: Family, cands: Cand[], skills: PlayerSkills, rule?: StyleRule): Map<Slot, Cand[]> {
   const pool = new Map<Slot, Cand[]>();
   for (const slot of SLOTS) {
+    const req = rule?.require?.[slot];
+    if (req?.length) {
+      // the fight demands one of these items here: ignore stats, keep every matching item
+      pool.set(slot, cands.filter((c) => c.item.slot === slot && meetsReqs(c.item, skills) && nameMatches(c.item, req)));
+      continue;
+    }
     let list = cands.filter((c) => c.item.slot === slot && meetsReqs(c.item, skills) && relevant(c.item, f)
       && (slot !== 'weapon' || weaponFits(c.item, f)));
     if (slot !== 'weapon' && !(slot === 'ammo' && f === 'ranged')) list = pruneDominated(list, f);
@@ -342,15 +405,18 @@ function seedsFromSets(cands: Cand[]): PlayerEquipment[] {
 
 /** Rank castable spells against this monster (gear-independent to first order) and keep the best few. */
 const spellCache = new WeakMap<Monster, Map<string, Spell[]>>();
-function topSpells(input: OptimizeInput, keep = 4): Spell[] {
-  const key = `${input.skills.magic}|${input.spellbooks.join(',')}|${JSON.stringify(input.buffs.magic)}`;
+function topSpells(input: OptimizeInput, keep = 4, rule?: StyleRule): Spell[] {
+  const key = `${input.skills.magic}|${input.spellbooks.join(',')}|${JSON.stringify(input.buffs.magic)}|${rule?.spells?.join(',') ?? ''}`;
   let m = spellCache.get(input.monster);
   if (!m) { m = new Map(); spellCache.set(input.monster, m); }
   const hit = m.get(key);
   if (hit) return hit;
   const p = basePlayer(input.skills, input.buffs.magic);
+  const allowed = rule?.spells?.map((x) => x.toLowerCase());
+  const adj = makeAdjust(rule);
   const ranked = availableSpells(input.skills.magic, input.spellbooks)
-    .map((sp) => ({ sp, r: evaluate(p, input.monster, emptyEquipment(), 'magic', sp) }))
+    .filter((sp) => !allowed || allowed.some((a) => sp.name.toLowerCase().startsWith(a)))
+    .map((sp) => ({ sp, r: applyAdjust(evaluate(p, input.monster, emptyEquipment(), 'magic', sp), adj ? adj(emptyEquipment(), sp) : 1) }))
     .filter((x) => x.r && x.r.dps > 0)
     .sort((a, b) => b.r!.dps - a.r!.dps)
     .slice(0, keep).map((x) => x.sp);
@@ -358,13 +424,18 @@ function topSpells(input: OptimizeInput, keep = 4): Spell[] {
   return ranked;
 }
 
+function familyRule(input: OptimizeInput, f: Family): StyleRule | undefined | false {
+  return input.fight ? styleRule(input.fight, f) : undefined;
+}
+
 function optimizeFamily(f: Family, input: OptimizeInput, cands: Cand[]): { best: Loadout | null; evals: number } {
-  const pool = buildPool(f, cands, input.skills);
+  const rule = familyRule(input, f) || undefined;
+  const pool = buildPool(f, cands, input.skills, rule);
   const darts = (pool.get('weapon') ?? []).filter((c) => c.item.category === EquipmentCategory.THROWN && /dart/i.test(c.item.name)).map((c) => c.item);
   const weaponsC = (pool.get('weapon') ?? []).map((c) => ({ ...c, item: withBlowpipeDart(c.item, darts) }));
-  const spellList = f === 'magic' ? topSpells(input) : [];
-  const wopts = buildWeaponOpts(f, weaponsC, pool.get('ammo') ?? [], spellList);
-  const s = new Search(f, input.monster, input.buffs[f], pool, wopts);
+  const spellList = f === 'magic' ? topSpells(input, 4, rule) : [];
+  const wopts = buildWeaponOpts(f, weaponsC, pool.get('ammo') ?? [], spellList, rule);
+  const s = new Search(f, input.monster, input.buffs[f], pool, wopts, rule);
   s.player.skills = { ...input.skills };
   s.player.boosts = basePlayer(input.skills, input.buffs[f]).boosts;
   const seeds = seedsFromSets(cands.filter((c) => meetsReqs(c.item, input.skills)));
@@ -391,44 +462,71 @@ export function optimize(input: OptimizeInput): FamilyResult[] {
   }
   const buyC = [...buyMap.values()];
 
+  if (input.fight?.noPrayer) {
+    const b = { ...input.buffs } as Record<Family, Buffs>;
+    for (const f of FAMILIES) b[f] = { ...b[f], prayers: [] };
+    input = { ...input, buffs: b };
+  }
   const results: FamilyResult[] = [];
   for (const f of input.families ?? FAMILIES) {
     const t0 = performance.now();
-    const { best, evals: e1 } = optimizeFamily(f, input, ownedC);
+    const rule = familyRule(input, f);
+    if (rule === false) {
+      results.push({ family: f, best: null, upgrades: [], budgetPlan: null, evals: 0, ms: 0, blocked: true });
+      continue;
+    }
+    const missing: Partial<Record<Slot, string[]>> = {};
+    for (const [slot, names] of Object.entries(rule?.require ?? {}) as [Slot, string[]][]) {
+      if (!ownedC.some((c) => c.item.slot === slot && nameMatches(c.item, names) && meetsReqs(c.item, input.skills))) missing[slot] = names;
+    }
+    // Recommend as if you had the required items you're missing, and say so.
+    const assumed: Cand[] = [];
+    for (const [slot, names] of Object.entries(missing) as [Slot, string[]][]) {
+      // assume the first listed option you could wear (the list is ordered easiest to get first)
+      let item: EquipmentPiece | undefined;
+      for (const n of names) {
+        item = equipment.find((e) => e.slot === slot && !isJunk(e) && nameMatches(e, [n]) && meetsReqs(e, input.skills));
+        if (item) break;
+      }
+      if (item) assumed.push({ item: usableVariant(item), cost: 0, owned: true });
+    }
+    const { best, evals: e1 } = optimizeFamily(f, input, [...ownedC, ...assumed]);
     let evals = e1;
     let upgrades: Upgrade[] = [];
     let budgetPlan: FamilyResult['budgetPlan'] = null;
     if (best && buyC.length) {
-      const u = findUpgrades(f, input, best, ownedC, buyC);
+      const u = findUpgrades(f, input, best, [...ownedC, ...assumed], buyC);
       upgrades = u.upgrades; evals += u.evals;
       if (input.budget && input.budget > 0) {
-        const b = planBudget(f, input, best, ownedC, upgrades, input.budget);
+        const b = planBudget(f, input, best, [...ownedC, ...assumed], upgrades, input.budget);
         budgetPlan = b.plan; evals += b.evals;
       }
     }
-    results.push({ family: f, best, upgrades, budgetPlan, evals, ms: performance.now() - t0 });
+    results.push({ family: f, best, upgrades, budgetPlan, evals, ms: performance.now() - t0,
+      ...(Object.keys(missing).length ? { missing } : {}) });
   }
   return results;
 }
 
 /** Single-purchase upgrades relative to the best owned loadout. Weapons get a re-optimized loadout. */
 function findUpgrades(f: Family, input: OptimizeInput, base: Loadout, ownedC: Cand[], buyC: Cand[]) {
+  const rule = familyRule(input, f) || undefined;
   const all = [...ownedC, ...buyC];
-  const pool = buildPool(f, all, input.skills);
+  const pool = buildPool(f, all, input.skills, rule);
   const buyable = new Set(buyC.map((c) => c.item.id));
-  const s = new Search(f, input.monster, input.buffs[f], pool, []);
+  const s = new Search(f, input.monster, input.buffs[f], pool, [], rule);
   s.player.skills = { ...input.skills };
   s.player.boosts = basePlayer(input.skills, input.buffs[f]).boosts;
-  const ownedPool = buildPool(f, ownedC, input.skills);
+  const ownedPool = buildPool(f, ownedC, input.skills, rule);
   const ups: Upgrade[] = [];
-  const spellList = f === 'magic' ? topSpells(input) : [];
+  const spellList = f === 'magic' ? topSpells(input, 4, rule) : [];
   const ammoPool = pool.get('ammo') ?? [];
 
   // Screen every buyable weapon with one eval in the current gear; only promising ones get a full re-settle.
   const weaponScreen: { c: Cand; opt: WeaponOpt; dps: number }[] = [];
   for (const c of pool.get('weapon') ?? []) {
     if (!buyable.has(c.item.id)) continue;
-    for (const w of buildWeaponOpts(f, [{ ...c, item: withBlowpipeDart(c.item, []) }], ammoPool, spellList)) {
+    for (const w of buildWeaponOpts(f, [{ ...c, item: withBlowpipeDart(c.item, []) }], ammoPool, spellList, rule)) {
       const eq = { ...base.equipment, weapon: w.weapon, ammo: w.ammo ?? base.equipment.ammo };
       if (w.weapon?.isTwoHanded) eq.shield = null;
       const r = s.score(eq, w.spell);
@@ -439,7 +537,7 @@ function findUpgrades(f: Family, input: OptimizeInput, base: Loadout, ownedC: Ca
   const promising = weaponScreen.filter((x, i) => i < 10 || x.dps > base.result.dps * 0.95).slice(0, 24);
   const bestByWeapon = new Map<number, Loadout>();
   for (const { c, opt } of promising) {
-    const ws = new Search(f, input.monster, input.buffs[f], ownedPool, [opt]);
+    const ws = new Search(f, input.monster, input.buffs[f], ownedPool, [opt], rule);
     ws.player.skills = s.player.skills; ws.player.boosts = s.player.boosts;
     const d = ws.descend(base.equipment, opt, 2);
     s.evals += ws.evals;
@@ -459,6 +557,7 @@ function findUpgrades(f: Family, input: OptimizeInput, base: Loadout, ownedC: Ca
     for (const c of pool.get(slot) ?? []) {
       if (!buyable.has(c.item.id)) continue;
       if (slot === 'weapon') continue;
+      if (slot === 'shield' && s.required('shield') && base.equipment.weapon?.isTwoHanded) continue;
       {
         if (slot === 'shield' && base.equipment.weapon?.isTwoHanded) continue;
         if (slot === 'ammo' && f === 'ranged') continue; // ammo is consumable; handled with weapons
@@ -487,7 +586,12 @@ function mkUpgrade(c: Cand, slot: Slot, lo: Loadout, base: Loadout): Upgrade {
 function planBudget(f: Family, input: OptimizeInput, base: Loadout, ownedC: Cand[], single: Upgrade[], budget: number) {
   let evals = 0;
   const p = basePlayer(input.skills, input.buffs[f]);
-  const score = (eq: PlayerEquipment, spell: Spell | null) => { evals++; return evaluate(p, input.monster, eq, f, spell); };
+  const adj = makeAdjust(familyRule(input, f) || undefined);
+  const score = (eq: PlayerEquipment, spell: Spell | null) => {
+    evals++;
+    const r = evaluate(p, input.monster, eq, f, spell);
+    return adj ? applyAdjust(r, adj(eq, spell)) : r;
+  };
   const inBudget = single.filter((u) => u.price <= budget);
   const byGain = [...inBudget].sort((a, b) => b.gain - a.gain).slice(0, 25);
   const byRatio = [...inBudget].sort((a, b) => b.perMil - a.perMil).slice(0, 25);

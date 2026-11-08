@@ -192,3 +192,37 @@ select, .skills input {
   .up-row { grid-template-columns: 30px 1fr auto 52px; }
   .up-val { display: none; }
 }
+
+/* ---------- mode switch ---------- */
+.modes { display: inline-flex; gap: 2px; margin-bottom: 18px; border: 1px solid var(--seam); border-radius: var(--r-small); padding: 2px; }
+.modes button { background: none; border: none; padding: 4px 14px; border-radius: 2px; cursor: pointer; color: var(--bone-dim); }
+.modes button[aria-pressed='true'] { background: var(--slab-2); color: var(--bone); }
+
+/* ---------- quests ---------- */
+.quest-picker { flex: 1 1 620px; max-width: 900px; }
+.quest-search {
+  width: 100%; background: transparent; border: none; border-bottom: 2px solid var(--seam);
+  font-size: clamp(1.6rem, 3.2vw, 2.4rem); font-weight: 700; line-height: 1.1; padding: 2px 0 6px; color: var(--bone);
+}
+.quest-search::placeholder { color: var(--bone-dim); opacity: 0.7; }
+.quest-search:focus { outline: none; border-bottom-color: var(--coin); }
+.quest-hint { margin: 8px 0 6px; font-size: 0.95rem; }
+.quest-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; max-height: 168px; overflow: auto; }
+.quest-list button {
+  display: inline-flex; align-items: center; gap: 8px; background: var(--slab); border: 1px solid var(--seam);
+  border-radius: var(--r-small); padding: 4px 10px; cursor: pointer;
+}
+.quest-list button:hover { border-color: var(--bone-dim); }
+.quest-list button[aria-pressed='true'] { border-color: var(--coin); background: var(--slab-2); }
+.status { font-size: 0.8rem; color: var(--bone-dim); }
+.status.s-IN_PROGRESS { color: var(--coin); }
+.fight-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 14px; }
+.fight-tabs button { background: none; border: none; border-bottom: 2px solid transparent; padding: 4px 8px; cursor: pointer; color: var(--bone-dim); }
+.fight-tabs button[aria-pressed='true'] { color: var(--bone); border-bottom-color: var(--coin); }
+
+.fight-info { background: var(--slab); border-left: 3px solid var(--coin); border-radius: var(--r-small); padding: 12px 16px; margin-bottom: 22px; max-width: 900px; }
+.fight-info h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+.fight-info h2 .dim { font-size: 0.95rem; font-weight: 500; margin-left: 8px; }
+.fight-info ul { margin: 4px 0; padding-left: 18px; }
+.fight-info p { max-width: 75ch; }
+.missing { margin-top: 10px; color: var(--coin); font-size: 0.95rem; }

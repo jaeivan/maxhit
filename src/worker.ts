@@ -1,6 +1,7 @@
 // One worker per combat family. Always works on the newest request; stale ones are dropped.
 import { optimize, Family, FamilyResult, Spellbook } from './optimizer';
 import { monsters, Buffs, PlayerSkills } from './engine';
+import { ALL_FIGHTS } from './data/quests';
 
 export interface WorkRequest {
   id: number;
@@ -13,6 +14,7 @@ export interface WorkRequest {
   spellbooks: Spellbook[];
   prices: [number, number][] | null;
   budget: number;
+  fightId?: string | null;
 }
 export interface WorkResponse { id: number; family: Family; phase: 'owned' | 'full'; result: FamilyResult; error?: string }
 
@@ -41,6 +43,7 @@ function loop() {
       excluded: new Set(req.excluded),
       spellbooks: req.spellbooks,
       families: [req.family],
+      fight: req.fightId ? ALL_FIGHTS.find((f) => f.id === req.fightId) : undefined,
     };
     // phase 1: owned gear only (fast)
     const owned = optimize(base)[0];

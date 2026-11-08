@@ -20,6 +20,9 @@ class ExportState
 	List<Integer> bank = new ArrayList<>();
 	List<Integer> worn = new ArrayList<>();
 	List<Integer> inventory = new ArrayList<>();
+	/** Quest name (as RuneLite names it) -> NOT_STARTED or IN_PROGRESS. Finished quests are left out. */
+	Map<String, String> unfinishedQuests;
+	long questsUpdatedAt;
 
 	ExportState normalized()
 	{

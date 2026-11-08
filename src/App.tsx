@@ -4,12 +4,18 @@ import {
   PlayerSkills, Potion, Prayer, SKILL_DEFAULT, Spell,
 } from './engine';
 import {
-  availableSpells, Family, FAMILIES, FamilyResult, Loadout, meetsReqs, resolveOwned, Spellbook, Upgrade, weaponFits,
+  applyAdjust, availableSpells, Family, FAMILIES, FamilyResult, Loadout, makeAdjust, meetsReqs, resolveOwned, Spellbook,
+  Upgrade, weaponFits,
 } from './optimizer';
+import { ALL_FIGHTS, Fight, QUEST_FIGHTS, styleRule } from './data/quests';
+import { FIGHT_MONSTER } from './fights';
 import type { WorkRequest, WorkResponse } from './worker';
 
 // ---------- persisted settings ----------
 interface Settings {
+  mode: 'monsters' | 'quests';
+  questName: string | null;
+  fightId: string | null;
   monsterIndex: number;
   recent: number[];
   budget: number;
@@ -25,6 +31,9 @@ interface Settings {
 const DEFAULT_MONSTER = Math.max(0, monsters.findIndex((m) => m.name === 'Vorkath'));
 function defaultSettings(): Settings {
   return {
+    mode: 'monsters',
+    questName: null,
+    fightId: null,
     monsterIndex: DEFAULT_MONSTER,
     recent: [],
     budget: 50_000_000,
@@ -67,6 +76,8 @@ const FAMILY_LABEL: Record<Family, string> = { melee: 'Melee', ranged: 'Ranged',
 interface ExportState {
   rsn?: string; updatedAt: number; bankUpdatedAt: number;
   skills: Partial<PlayerSkills>; bank: number[]; worn: number[]; inventory: number[];
+  /** Quest name -> NOT_STARTED | IN_PROGRESS; finished quests are absent. Missing entirely = not read yet. */
+  unfinishedQuests?: Record<string, string>;
 }
 
 // ---------- formatting ----------
@@ -94,6 +105,9 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const patch = useCallback((p: Partial<Settings>) => setSettings((s) => ({ ...s, ...p })), []);
   useEffect(() => { try { localStorage.setItem('maxhit.settings', JSON.stringify(settings)); } catch { /* ignore */ } }, [settings]);
+  const fight: (Fight & { quest: string }) | null = settings.mode === 'quests' && settings.fightId
+    ? ALL_FIGHTS.find((f) => f.id === settings.fightId) ?? null : null;
+  const activeMonsterIndex = fight ? FIGHT_MONSTER.get(fight.id) ?? settings.monsterIndex : settings.monsterIndex;
 
   const [exp, setExp] = useState<ExportState | null>(null);
   const [expError, setExpError] = useState<string | null>(null);
@@ -184,19 +198,20 @@ export default function App() {
     setPending(true);
     for (const f of FAMILIES) {
       const req: WorkRequest = {
-        id, family: f, monsterIndex: settings.monsterIndex, skills, buffs, ownedIds,
+        id, family: f, monsterIndex: activeMonsterIndex, skills, buffs, ownedIds,
         excluded: settings.excluded, spellbooks: settings.spellbooks, prices, budget: settings.budget,
+        fightId: fight?.id ?? null,
       };
       workers.current[f].postMessage(req);
     }
-  }, [exp, settings.monsterIndex, skills, buffs, ownedIds, settings.excluded, settings.spellbooks, prices, settings.budget]);
+  }, [exp, activeMonsterIndex, fight, skills, buffs, ownedIds, settings.excluded, settings.spellbooks, prices, settings.budget]);
 
   useEffect(() => {
     const done = FAMILIES.every((f) => results[f]?.id === reqId.current && (results[f]?.phase === 'full' || !prices || !results[f]?.r.best));
     if (done) setPending(false);
   }, [results, prices]);
 
-  const monster = monsters[settings.monsterIndex];
+  const monster = monsters[activeMonsterIndex];
   const selectMonster = (i: number) => patch({
     monsterIndex: i,
     recent: [i, ...settings.recent.filter((x) => x !== i)].slice(0, 8),
@@ -205,8 +220,15 @@ export default function App() {
 
   return (
     <div className="app">
+      <nav className="modes" aria-label="What to plan for">
+        <button type="button" aria-pressed={settings.mode === 'monsters'} onClick={() => patch({ mode: 'monsters' })}>Monsters</button>
+        <button type="button" aria-pressed={settings.mode === 'quests'} onClick={() => patch({ mode: 'quests' })}>Quests</button>
+      </nav>
       <header className="top">
-        <MonsterPicker monster={monster} onPick={selectMonster} recent={settings.recent} />
+        {settings.mode === 'monsters'
+          ? <MonsterPicker monster={monster} onPick={selectMonster} recent={settings.recent} />
+          : <QuestPicker exp={exp} questName={settings.questName} fightId={settings.fightId}
+              onPick={(questName, fightId) => patch({ questName, fightId })} />}
         <div className="status">
           <SyncStatus exp={exp} error={expError} />
           <span className={priceError ? 'warn' : ''}>
@@ -229,13 +251,18 @@ export default function App() {
 
       {!exp && <EmptyState error={expError} />}
 
-      {exp && (
+      {exp && fight && <FightInfo fight={fight} />}
+      {exp && settings.mode === 'quests' && !fight && (
+        <section className="empty"><p>Pick a quest and one of its fights to see what to bring.</p></section>
+      )}
+      {exp && (settings.mode === 'monsters' || fight) && (
         <main className={`columns${pending ? ' is-pending' : ''}`}>
           {FAMILIES.map((f) => (
             <FamilyColumn
-              key={f + settings.monsterIndex}
+              key={f + activeMonsterIndex + (fight?.id ?? '')}
               family={f}
               monster={monster}
+              fight={fight}
               state={results[f]}
               skills={skills}
               buffs={buffs[f]}
@@ -467,7 +494,7 @@ const SLOT_LABEL: Record<keyof PlayerEquipment, string> = {
 };
 
 function FamilyColumn(props: {
-  family: Family; monster: Monster; state: { phase: 'owned' | 'full'; r: FamilyResult } | null;
+  family: Family; monster: Monster; fight: Fight | null; state: { phase: 'owned' | 'full'; r: FamilyResult } | null;
   skills: PlayerSkills; buffs: Buffs; ownedIds: number[]; excluded: number[]; spellbooks: Spellbook[];
   hasPrices: boolean; budget: number; onExclude: (id: number) => void;
 }) {
@@ -478,11 +505,19 @@ function FamilyColumn(props: {
   const bestKey = best ? Object.values(best.equipment).map((e) => e?.id ?? 0).join(',') + (best.spell?.name ?? '') : '';
   useEffect(() => { setCustom(null); }, [bestKey]);
 
-  const player = useMemo(() => basePlayer(skills, buffs), [skills, buffs]);
+  const rule = props.fight ? styleRule(props.fight, family) : undefined;
+  const adjust = useMemo(() => makeAdjust(rule || undefined), [props.fight, family]); // eslint-disable-line react-hooks/exhaustive-deps
+  const player = useMemo(
+    () => basePlayer(skills, props.fight?.noPrayer ? { ...buffs, prayers: [] } : buffs),
+    [skills, buffs, props.fight],
+  );
+  const score = useCallback((eq: PlayerEquipment, spell: Spell | null) => {
+    const r = evaluate(player, monster, eq, family, spell);
+    return adjust ? applyAdjust(r, adjust(eq, spell)) : r;
+  }, [player, monster, family, adjust]);
   const shownEq = custom?.eq ?? best?.equipment ?? emptyEquipment();
   const shownSpell = custom ? custom.spell : best?.spell ?? null;
-  const shown = useMemo(() => (custom ? evaluate(player, monster, custom.eq, family, custom.spell) : best?.result ?? null),
-    [custom, best, player, monster, family]);
+  const shown = useMemo(() => (custom ? score(custom.eq, custom.spell) : best?.result ?? null), [custom, best, score]);
   const delta = custom && best && shown ? shown.dps - best.result.dps : 0;
 
   const owned = useMemo(() => resolveOwned(props.ownedIds).filter((e) => !props.excluded.includes(e.id) && meetsReqs(e, skills)),
@@ -494,9 +529,20 @@ function FamilyColumn(props: {
     <section className={`col fam-${family}`} aria-label={`${FAMILY_LABEL[family]} setup`}>
       <header className="col-head">
         <h2>{FAMILY_LABEL[family]}</h2>
-        {!state && <p className="dim">Working out your best gear</p>}
-        {state && !best && <p className="dim">You can't damage {monster.name} with {family} using what you own.</p>}
-        {shown && (
+        {props.fight?.manual && <p className="dim">{props.fight.manual}</p>}
+        {!props.fight?.manual && !state && <p className="dim">Working out your best gear</p>}
+        {!props.fight?.manual && state?.r.blocked && <p className="dim">{FAMILY_LABEL[family]} can't damage {monster.name} in this fight.</p>}
+        {!props.fight?.manual && state && !state.r.blocked && !best && (
+          <p className="dim">You can't damage {monster.name} with {family} using what you own.</p>
+        )}
+        {!props.fight?.manual && state?.r.missing && (
+          <p className="missing">
+            Not in your bank: {Object.values(state.r.missing).map((names) => (names.length > 1
+              ? `${names[0]} (or ${names.slice(1).join(', ')})` : names[0])).join(', and ')}.
+            {best ? ' This setup assumes you get it.' : ''}
+          </p>
+        )}
+        {shown && !props.fight?.manual && (
           <>
             <div className="dps">
               <span className="dps-num">{shown.dps.toFixed(2)}</span>
@@ -521,9 +567,9 @@ function FamilyColumn(props: {
         )}
       </header>
 
-      {best && (
+      {best && !props.fight?.manual && (
         <GearGrid
-          family={family} eq={shownEq} spell={shownSpell} owned={owned} player={player} monster={monster}
+          family={family} eq={shownEq} spell={shownSpell} owned={owned} score={score}
           baseline={shown?.dps ?? 0}
           onSwap={(eq, spell, note) => setCustom({ eq, spell, note })}
           onExclude={props.onExclude}
@@ -531,14 +577,14 @@ function FamilyColumn(props: {
         />
       )}
 
-      {best && <Upgrades state={state!} hasPrices={props.hasPrices} budget={props.budget} onPreview={preview} />}
+      {best && !props.fight?.manual && <Upgrades state={state!} hasPrices={props.hasPrices} budget={props.budget} onPreview={preview} />}
     </section>
   );
 }
 
 function GearGrid(props: {
   family: Family; eq: PlayerEquipment; spell: Spell | null; owned: EquipmentPiece[];
-  player: ReturnType<typeof basePlayer>; monster: Monster; baseline: number;
+  score: (eq: PlayerEquipment, spell: Spell | null) => { dps: number } | null; baseline: number;
   onSwap: (eq: PlayerEquipment, spell: Spell | null, note: string) => void; onExclude: (id: number) => void;
   spellbooks: Spellbook[]; magicLevel: number;
 }) {
@@ -559,7 +605,7 @@ function GearGrid(props: {
     if (openSlot === 'spell') {
       return availableSpells(props.magicLevel, props.spellbooks).map((sp) => ({
         key: sp.name, label: sp.name, item: null as EquipmentPiece | null, spell: sp,
-        dps: evaluate(props.player, props.monster, props.eq, 'magic', sp)?.dps ?? 0,
+        dps: props.score(props.eq, sp)?.dps ?? 0,
       })).sort((a, b) => b.dps - a.dps);
     }
     const list = [null, ...props.owned.filter((e) => e.slot === openSlot && (openSlot !== 'weapon' || weaponFits(e, props.family)))];
@@ -569,10 +615,10 @@ function GearGrid(props: {
       if (openSlot === 'shield' && item && props.eq.weapon?.isTwoHanded) eq.weapon = null;
       return {
         key: String(item?.id ?? 'none'), label: item?.name ?? 'Nothing', item, spell: props.spell,
-        dps: evaluate(props.player, props.monster, eq, props.family, props.spell)?.dps ?? 0,
+        dps: props.score(eq, props.spell)?.dps ?? 0,
       };
     }).sort((a, b) => b.dps - a.dps);
-  }, [openSlot, props.owned, props.eq, props.spell, props.player, props.monster, props.family, props.magicLevel, props.spellbooks]);
+  }, [openSlot, props.owned, props.eq, props.spell, props.score, props.family, props.magicLevel, props.spellbooks]);
 
   const choose = (o: typeof options[number]) => {
     if (openSlot === 'spell') { props.onSwap(props.eq, o.spell, `Casting ${o.label}`); setOpenSlot(null); return; }
@@ -703,4 +749,92 @@ function Upgrades({ state, hasPrices, budget, onPreview }: {
       </ul>
     </div>
   );
+}
+
+// ---------- quests ----------
+const STATUS_LABEL: Record<string, string> = { IN_PROGRESS: 'In progress', NOT_STARTED: 'Not started' };
+
+function QuestPicker({ exp, questName, fightId, onPick }: {
+  exp: ExportState | null; questName: string | null; fightId: string | null;
+  onPick: (quest: string | null, fight: string | null) => void;
+}) {
+  const [q, setQ] = useState('');
+  const known = exp?.unfinishedQuests !== undefined;
+  const unfinished = exp?.unfinishedQuests ?? {};
+  const statusOf = (name: string) => (known ? (unfinished[name] ?? 'FINISHED') : null);
+
+  const list = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    const all = QUEST_FIGHTS.map((x) => x.quest);
+    if (s) return all.filter((n) => n.toLowerCase().includes(s));
+    // default: your unfinished quests with fights, in-progress first
+    if (known) {
+      return all.filter((n) => unfinished[n]).sort((a, b) => (unfinished[a] === 'IN_PROGRESS' ? -1 : 0) - (unfinished[b] === 'IN_PROGRESS' ? -1 : 0));
+    }
+    return all;
+  }, [q, known, unfinished]);
+
+  const quest = QUEST_FIGHTS.find((x) => x.quest === questName) ?? null;
+
+  return (
+    <div className="quest-picker">
+      <label htmlFor="quest-search" className="picker-label">Which quest are you doing?</label>
+      <input
+        id="quest-search" className="quest-search" value={q} autoComplete="off"
+        placeholder={known ? 'Search all quests with fights' : 'Search quests with fights'}
+        onChange={(e) => setQ(e.target.value)}
+      />
+      <p className="dim quest-hint">
+        {q ? `${list.length} matching` : known
+          ? `${list.length} of your unfinished quests have fights`
+          : 'Your quest progress appears here once the plugin has read it'}
+      </p>
+      <ul className="quest-list">
+        {list.map((name) => {
+          const st = statusOf(name);
+          return (
+            <li key={name}>
+              <button
+                type="button" aria-pressed={name === questName}
+                onClick={() => { const first = QUEST_FIGHTS.find((x) => x.quest === name)!.fights[0]; onPick(name, first.id); setQ(''); }}
+              >
+                <span>{name}</span>
+                {st && st !== 'FINISHED' && <span className={`status s-${st}`}>{STATUS_LABEL[st]}</span>}
+                {st === 'FINISHED' && <span className="status s-done">Done</span>}
+              </button>
+            </li>
+          );
+        })}
+        {list.length === 0 && <li className="dim">{known && !q ? 'No unfinished quests with fights. Search to revisit one.' : 'No quest with a fight matches that.'}</li>}
+      </ul>
+      {quest && (
+        <div className="fight-tabs" role="group" aria-label={`${quest.quest} fights`}>
+          {quest.fights.map((f) => (
+            <button key={f.id} type="button" aria-pressed={f.id === fightId} onClick={() => onPick(quest.quest, f.id)}>{f.name}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FightInfo({ fight }: { fight: Fight & { quest: string } }) {
+  const rules: string[] = [];
+  const blocked = FAMILIES.filter((f) => styleRule(fight, f) === false).map((f) => FAMILY_LABEL[f].toLowerCase());
+  if (blocked.length) rules.push(`Can't be damaged with ${blocked.join(' or ')}.`);
+  if (fight.noPrayer) rules.push('Prayer is disabled in this fight.');
+  const allReq = { ...(fight.all?.require ?? {}) };
+  for (const [slot, names] of Object.entries(allReq)) rules.push(`${slotLabel(slot)}: must wear ${names!.join(' or ')}.`);
+  return (
+    <section className="fight-info" aria-label="Fight rules">
+      <h2>{fight.name} <span className="dim">{fight.quest}</span></h2>
+      {rules.length > 0 && <ul>{rules.map((r) => <li key={r}>{r}</li>)}</ul>}
+      {fight.note && <p>{fight.note}</p>}
+      {!rules.length && !fight.note && !fight.manual && <p className="dim">No special gear rules for this fight.</p>}
+    </section>
+  );
+}
+
+function slotLabel(slot: string) {
+  return (SLOT_LABEL as Record<string, string>)[slot] ?? slot;
 }

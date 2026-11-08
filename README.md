@@ -1,7 +1,7 @@
 # MaxHit
 
-An OSRS combat companion for RuneLite. Pick a monster and it shows your best melee, ranged and magic
-setups from the gear you own, plus the GE upgrades that add the most DPS. All DPS numbers come from the
+An OSRS combat companion for RuneLite. Pick a monster or a quest fight and it shows your best melee, ranged
+and magic setups from the gear you own, plus the GE upgrades that add the most DPS. All DPS numbers come from the
 [OSRS Wiki DPS calculator](https://github.com/weirdgloop/osrs-dps-calc) engine.
 
 ## Setup
@@ -16,15 +16,18 @@ npm run dev     # http://localhost:5173
 cd plugin && ./gradlew run   # RuneLite with the MaxHit plugin
 ```
 
-Log in and open your bank once. The plugin saves your bank, gear, inventory and levels to
+Log in and open your bank once. The plugin saves your bank, gear, inventory, levels and quest progress to
 `~/.runelite/maxhit/`, and the page updates by itself. With a Jagex account, the dev client needs a one-time
 login setup: see RuneLite's "Using Jagex Accounts" wiki page.
 
 ## Use
 
 - `/` to search monsters. Click a gear slot to compare everything you own for it; click an upgrade to preview it.
+- **Quests** lists your unfinished quests that have fights (108 fights across 57 quests). Recommendations follow
+  each fight's rules, like Elvarg's anti-dragon shield or Kamil's fire-spells-only, and flag required items you don't own.
 - Settings: prayers, potions, spellbooks, level overrides, excluded items.
-- `npm test` runs a sample bank; `npm run test:brute` checks the optimizer against brute force.
+- `npm test` runs a sample bank, `npm run test:quests` checks every quest fight, and `npm run test:brute` compares
+  the optimizer against brute force.
 
 ## Limits
 

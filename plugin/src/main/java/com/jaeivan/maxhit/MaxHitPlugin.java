@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -24,8 +25,11 @@ import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InventoryID;
@@ -52,6 +56,8 @@ public class MaxHitPlugin extends Plugin
 	static final Path EXPORT_DIR = RuneLite.RUNELITE_DIR.toPath().resolve("maxhit");
 	private static final int NO_PLACEHOLDER = -1;
 	private static final long WRITE_DEBOUNCE_MS = 1500;
+	/** Quest progress is re-read this often (in game ticks, 100 ticks = 60 seconds). */
+	private static final int QUEST_CHECK_TICKS = 100;
 
 	private static final Map<Skill, String> SKILL_KEYS = new EnumMap<>(Skill.class);
 
@@ -86,6 +92,7 @@ public class MaxHitPlugin extends Plugin
 
 	private ExportState state;
 	private ScheduledFuture<?> pendingWrite;
+	private int ticksUntilQuestCheck;
 
 	@Override
 	protected void startUp()
@@ -135,6 +142,8 @@ public class MaxHitPlugin extends Plugin
 			state.account = account;
 		}
 		readSkills();
+		readQuests();
+		ticksUntilQuestCheck = QUEST_CHECK_TICKS;
 		readContainer(InventoryID.WORN);
 		readContainer(InventoryID.INV);
 		readContainer(InventoryID.BANK); // only present if the bank is open
@@ -161,6 +170,45 @@ public class MaxHitPlugin extends Plugin
 			readSkills();
 			scheduleWrite();
 		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick tick)
+	{
+		if (state == null || --ticksUntilQuestCheck > 0)
+		{
+			return;
+		}
+		ticksUntilQuestCheck = QUEST_CHECK_TICKS;
+		if (readQuests())
+		{
+			scheduleWrite();
+		}
+	}
+
+	/**
+	 * Reads every quest's state (runs a client script, so client thread only).
+	 * Only unfinished quests are stored; anything absent is finished.
+	 * @return true if anything changed since the last read
+	 */
+	private boolean readQuests()
+	{
+		Map<String, String> unfinished = new TreeMap<>();
+		for (Quest quest : Quest.values())
+		{
+			QuestState qs = quest.getState(client);
+			if (qs != QuestState.FINISHED)
+			{
+				unfinished.put(quest.getName(), qs.name());
+			}
+		}
+		if (unfinished.equals(state.unfinishedQuests))
+		{
+			return false;
+		}
+		state.unfinishedQuests = unfinished;
+		state.questsUpdatedAt = System.currentTimeMillis();
+		return true;
 	}
 
 	private void readSkills()

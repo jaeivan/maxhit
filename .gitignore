@@ -1,6 +1,7 @@
-node_modules/
-engine/
+node_modules
+engine
 dist/
 plugin/build/
 plugin/.gradle/
+prices.json
 *.log

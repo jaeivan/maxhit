@@ -2,13 +2,11 @@
 
 ## Done
 - Gear optimizer: best owned loadout per style, GE upgrades, budget plan
-- RuneLite plugin exporting bank, worn gear, inventory and levels
-
-## In progress
-- Quest gear: plugin reads quest progress; for each unfinished quest with a fight, recommend gear
-  that follows the fight's rules (required items, style or spell limits)
+- RuneLite plugin exporting bank, worn gear, inventory, levels and quest progress
+- Quest gear: per-fight recommendations that follow each fight's rules (108 fights, 57 quests)
 
 ## Next
+- Quest data: recheck fight rules each time the wiki changes; add fights from new quests
 - **GitHub Pages version**: plugin serves its data on localhost instead of only writing a file; page calls
   the wiki price API directly (or a scheduled Action publishes prices); Action builds and deploys the site
 - **Plugin auto-detects** current slayer task and unlocked prayers (Rigour, Augury, Deadeye, Mystic Vigour)
