@@ -1,0 +1,42 @@
+{
+  "name": "gear-optimizer",
+  "version": "1.0.0",
+  "description": "Personal OSRS gear optimizer: best loadout from your bank + GE upgrade suggestions",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "vite",
+    "dev:offline": "vite --mode offline",
+    "typecheck": "tsc -p .",
+    "test": "node scripts/build-node.mjs tests/sample-bank.ts dist/sample-bank.mjs && node dist/sample-bank.mjs",
+    "test:stress": "node scripts/build-node.mjs tests/stress.ts dist/stress.mjs && node dist/stress.mjs",
+    "test:brute": "node scripts/build-node.mjs tests/brute-melee.ts dist/brute.mjs && node dist/brute.mjs",
+    "bench": "node scripts/build-node.mjs tests/bench.ts dist/bench.mjs && node dist/bench.mjs"
+  },
+  "license": "GPL-3.0-only",
+  "devDependencies": {
+    "@types/d3-array": "^3.2.2",
+    "@types/lodash.mergewith": "^4.6.9",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "type-fest": "^5.10.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6"
+  },
+  "dependencies": {
+    "axios": "^1.21.0",
+    "d3-array": "^3.2.5",
+    "lodash.isequal": "^4.5.0",
+    "lodash.mergewith": "^4.6.2",
+    "mobx": "^7.1.5",
+    "mobx-react-lite": "^5.1.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "uuid": "^14.0.3"
+  },
+  "private": true,
+  "type": "module"
+}

@@ -1,0 +1,40 @@
+diff --git a/src/lib/Equipment.ts b/src/lib/Equipment.ts
+index 074ea2f..fa9128f 100644
+--- a/src/lib/Equipment.ts
++++ b/src/lib/Equipment.ts
+@@ -47,6 +47,7 @@ export const noStatExceptions = [
+  * @see https://oldschool.runescape.wiki/w/Trouver_parchment
+  */
+ export const equipmentAliases = generatedEquipmentAliases as { [key: number]: number[] };
++const equipmentById = new Map<number, EquipmentPiece>(availableEquipment.map((e) => [e.id, e]));
+ 
+ const commonAmmoCategories = () => {
+   const ret: { [k: string]: number[] } = {
+@@ -203,12 +204,12 @@ export const ammoApplicability = (weaponId?: number, ammoId?: number): AmmoAppli
+  * Returns the canonical (base) item ID for a given item ID. This is useful if there are variants of each item.
+  * @param itemId
+  */
+-export const getCanonicalItemId = (itemId: number): number => {
+-  for (const [k, v] of Object.entries(equipmentAliases)) {
+-    if (v.includes(itemId)) return parseInt(k);
+-  }
+-  return itemId;
+-};
++// gearopt patch: O(1) reverse-alias lookup (was a linear scan over every alias on each call)
++const canonicalIdByAlias = new Map<number, number>();
++for (const [k, v] of Object.entries(equipmentAliases)) {
++  for (const id of v) if (!canonicalIdByAlias.has(id)) canonicalIdByAlias.set(id, parseInt(k));
++}
++export const getCanonicalItemId = (itemId: number): number => canonicalIdByAlias.get(itemId) ?? itemId;
+ 
+ export const getCanonicalItem = (equipmentPiece: EquipmentPiece): EquipmentPiece => {
+   const canonicalId = getCanonicalItemId(equipmentPiece.id);
+@@ -216,7 +217,7 @@ export const getCanonicalItem = (equipmentPiece: EquipmentPiece): EquipmentPiece
+     return equipmentPiece;
+   }
+ 
+-  const canonicalItem = availableEquipment.find((e) => e.id === canonicalId);
++  const canonicalItem = equipmentById.get(canonicalId);
+   if (!canonicalItem) {
+     return equipmentPiece;
+   }

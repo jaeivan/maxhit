@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx",
+    "strict": true, "noEmit": true, "skipLibCheck": true, "resolveJsonModule": true, "esModuleInterop": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"], "types": ["vite/client", "node"],
+    "paths": { "@/*": ["./engine/src/*"] }, "preserveSymlinks": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
+  "exclude": ["engine", "node_modules"]
+}
