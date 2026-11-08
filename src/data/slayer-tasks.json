@@ -1,0 +1,833 @@
+[
+ {
+  "name": "Aberrant spectres",
+  "targets": [
+   "Spectre"
+  ]
+ },
+ {
+  "name": "Abyssal demons",
+  "targets": [
+   "Abyssal Sire"
+  ]
+ },
+ {
+  "name": "The Abyssal Sire",
+  "targets": []
+ },
+ {
+  "name": "The Alchemical Hydra",
+  "targets": []
+ },
+ {
+  "name": "Ankou",
+  "targets": []
+ },
+ {
+  "name": "Aquanites",
+  "targets": []
+ },
+ {
+  "name": "Araxxor",
+  "targets": []
+ },
+ {
+  "name": "Araxytes",
+  "targets": [
+   "Araxxor"
+  ]
+ },
+ {
+  "name": "Aviansies",
+  "targets": [
+   "Kree'arra",
+   "Flight Kilisa",
+   "Flockleader Geerin",
+   "Wingman Skree"
+  ]
+ },
+ {
+  "name": "Bandits",
+  "targets": [
+   "Bandit",
+   "Black Heather",
+   "Donny the Lad",
+   "Speedy Keith"
+  ]
+ },
+ {
+  "name": "Banshees",
+  "targets": []
+ },
+ {
+  "name": "Barrows Brothers",
+  "targets": []
+ },
+ {
+  "name": "Basilisks",
+  "targets": []
+ },
+ {
+  "name": "Bats",
+  "targets": [
+   "Death wing"
+  ]
+ },
+ {
+  "name": "Bears",
+  "targets": [
+   "Callisto",
+   "Artio"
+  ]
+ },
+ {
+  "name": "Birds",
+  "targets": [
+   "Chicken",
+   "Rooster",
+   "Terrorbird",
+   "Seagull",
+   "Vulture",
+   "Duck",
+   "Penguin",
+   "Baby Roc"
+  ]
+ },
+ {
+  "name": "Black demons",
+  "targets": [
+   "Demonic gorilla",
+   "Balfrug Kreeyath",
+   "Skotizo",
+   "Porazdir"
+  ]
+ },
+ {
+  "name": "Black dragons",
+  "targets": []
+ },
+ {
+  "name": "Black Knights",
+  "targets": [
+   "Black Knight"
+  ]
+ },
+ {
+  "name": "Bloodveld",
+  "targets": []
+ },
+ {
+  "name": "Blue dragons",
+  "targets": [
+   "Vorkath"
+  ]
+ },
+ {
+  "name": "Brine rats",
+  "targets": []
+ },
+ {
+  "name": "Callisto",
+  "targets": []
+ },
+ {
+  "name": "Catablepon",
+  "targets": []
+ },
+ {
+  "name": "Cave bugs",
+  "targets": []
+ },
+ {
+  "name": "Cave crawlers",
+  "targets": [
+   "Chasm crawler"
+  ]
+ },
+ {
+  "name": "Cave horrors",
+  "targets": [
+   "Cave abomination"
+  ]
+ },
+ {
+  "name": "Cave kraken",
+  "targets": [
+   "Kraken"
+  ]
+ },
+ {
+  "name": "Cave slimes",
+  "targets": []
+ },
+ {
+  "name": "Cerberus",
+  "targets": []
+ },
+ {
+  "name": "Chaos druids",
+  "targets": []
+ },
+ {
+  "name": "The Chaos Elemental",
+  "targets": []
+ },
+ {
+  "name": "The Chaos Fanatic",
+  "targets": []
+ },
+ {
+  "name": "Cockatrice",
+  "targets": [
+   "Cockathrice"
+  ]
+ },
+ {
+  "name": "Cows",
+  "targets": [
+   "Buffalo",
+   "Brutus"
+  ]
+ },
+ {
+  "name": "Crabs",
+  "targets": [
+   "Ammonite Crab",
+   "Frost Crab",
+   "King Sand Crab",
+   "Rock Crab",
+   "Giant Rock Crab",
+   "Sand Crab",
+   "Swamp Crab"
+  ]
+ },
+ {
+  "name": "Crawling hands",
+  "targets": [
+   "Crushing hand"
+  ]
+ },
+ {
+  "name": "Crazy Archaeologists",
+  "targets": []
+ },
+ {
+  "name": "Crocodiles",
+  "targets": []
+ },
+ {
+  "name": "Custodian Stalkers",
+  "targets": [
+   "Ancient Custodian"
+  ]
+ },
+ {
+  "name": "Dagannoth",
+  "targets": []
+ },
+ {
+  "name": "Dagannoth Kings",
+  "targets": []
+ },
+ {
+  "name": "Dark beasts",
+  "targets": [
+   "Night beast"
+  ]
+ },
+ {
+  "name": "Dark warriors",
+  "targets": [
+   "Dark warrior"
+  ]
+ },
+ {
+  "name": "Deranged Archaeologist",
+  "targets": []
+ },
+ {
+  "name": "Dogs",
+  "targets": [
+   "Jackal",
+   "Temple Guardian"
+  ]
+ },
+ {
+  "name": "Drakes",
+  "targets": []
+ },
+ {
+  "name": "Duke Sucellus",
+  "targets": []
+ },
+ {
+  "name": "Dust devils",
+  "targets": [
+   "Choke devil"
+  ]
+ },
+ {
+  "name": "Dwarves",
+  "targets": [
+   "Dwarf",
+   "Black Guard"
+  ]
+ },
+ {
+  "name": "Earth warriors",
+  "targets": []
+ },
+ {
+  "name": "Elves",
+  "targets": [
+   "Elf",
+   "Iorwerth Warrior",
+   "Iorwerth Archer"
+  ]
+ },
+ {
+  "name": "Ents",
+  "targets": []
+ },
+ {
+  "name": "Fever spiders",
+  "targets": []
+ },
+ {
+  "name": "Fire giants",
+  "targets": [
+   "Branda the Fire Queen"
+  ]
+ },
+ {
+  "name": "Fleshcrawlers",
+  "targets": [
+   "Flesh crawler"
+  ]
+ },
+ {
+  "name": "Fossil island wyverns",
+  "targets": [
+   "Ancient wyvern",
+   "Long-tailed wyvern",
+   "Spitting wyvern",
+   "Taloned wyvern"
+  ]
+ },
+ {
+  "name": "Frost dragons",
+  "targets": []
+ },
+ {
+  "name": "Gargoyles",
+  "targets": [
+   "Dusk",
+   "Dawn"
+  ]
+ },
+ {
+  "name": "General Graardor",
+  "targets": []
+ },
+ {
+  "name": "Ghosts",
+  "targets": [
+   "Death wing",
+   "Tortured soul",
+   "Forgotten Soul",
+   "Revenant"
+  ]
+ },
+ {
+  "name": "Ghouls",
+  "targets": []
+ },
+ {
+  "name": "The Giant Mole",
+  "targets": []
+ },
+ {
+  "name": "Goblins",
+  "targets": [
+   "Sergeant Strongstack",
+   "Sergeant Grimspike",
+   "Sergeant Steelwill"
+  ]
+ },
+ {
+  "name": "Greater demons",
+  "targets": [
+   "K'ril Tsutsaroth",
+   "Tstanon Karlak",
+   "Skotizo",
+   "Tormented Demon"
+  ]
+ },
+ {
+  "name": "Green dragons",
+  "targets": [
+   "Elvarg"
+  ]
+ },
+ {
+  "name": "The Grotesque Guardians",
+  "targets": [
+   "Dusk",
+   "Dawn"
+  ]
+ },
+ {
+  "name": "Gryphons",
+  "targets": []
+ },
+ {
+  "name": "Harpie bug swarms",
+  "targets": []
+ },
+ {
+  "name": "Hellhounds",
+  "targets": [
+   "Cerberus"
+  ]
+ },
+ {
+  "name": "Hill giants",
+  "targets": [
+   "Cyclops",
+   "Reanimated giant",
+   "Obor"
+  ]
+ },
+ {
+  "name": "Hobgoblins",
+  "targets": []
+ },
+ {
+  "name": "Hydras",
+  "targets": []
+ },
+ {
+  "name": "Icefiends",
+  "targets": []
+ },
+ {
+  "name": "Ice giants",
+  "targets": [
+   "Eldric the Ice King"
+  ]
+ },
+ {
+  "name": "Ice warriors",
+  "targets": [
+   "Icelord"
+  ]
+ },
+ {
+  "name": "Infernal mages",
+  "targets": [
+   "Malevolent mage"
+  ]
+ },
+ {
+  "name": "TzTok-Jad",
+  "targets": []
+ },
+ {
+  "name": "Jellies",
+  "targets": [
+   "Jelly"
+  ]
+ },
+ {
+  "name": "Jungle horrors",
+  "targets": []
+ },
+ {
+  "name": "Kalphites",
+  "targets": []
+ },
+ {
+  "name": "The Kalphite Queen",
+  "targets": []
+ },
+ {
+  "name": "Killerwatts",
+  "targets": []
+ },
+ {
+  "name": "The King Black Dragon",
+  "targets": []
+ },
+ {
+  "name": "The Cave Kraken Boss",
+  "targets": [
+   "Kraken"
+  ]
+ },
+ {
+  "name": "Kree'arra",
+  "targets": []
+ },
+ {
+  "name": "K'ril Tsutsaroth",
+  "targets": []
+ },
+ {
+  "name": "Kurask",
+  "targets": []
+ },
+ {
+  "name": "Lava Dragons",
+  "targets": [
+   "Lava dragon"
+  ]
+ },
+ {
+  "name": "Lesser demons",
+  "targets": [
+   "Zakl'n Gritch"
+  ]
+ },
+ {
+  "name": "Lesser Nagua",
+  "targets": [
+   "Sulphur Nagua",
+   "Frost Nagua",
+   "Amoxliatl"
+  ]
+ },
+ {
+  "name": "Lizardmen",
+  "targets": [
+   "Lizardman"
+  ]
+ },
+ {
+  "name": "Lizards",
+  "targets": []
+ },
+ {
+  "name": "The Maggot King",
+  "targets": []
+ },
+ {
+  "name": "Magic axes",
+  "targets": []
+ },
+ {
+  "name": "Mammoths",
+  "targets": []
+ },
+ {
+  "name": "Metal dragons",
+  "targets": [
+   "Bronze dragon",
+   "Iron Dragon",
+   "Steel dragon",
+   "Mithril dragon",
+   "Adamant dragon",
+   "Rune dragon"
+  ]
+ },
+ {
+  "name": "Minotaurs",
+  "targets": []
+ },
+ {
+  "name": "Mogres",
+  "targets": []
+ },
+ {
+  "name": "Molanisks",
+  "targets": []
+ },
+ {
+  "name": "Monkeys",
+  "targets": [
+   "Tortured gorilla",
+   "Demonic gorilla",
+   "Padulah"
+  ]
+ },
+ {
+  "name": "Moss giants",
+  "targets": [
+   "Bryophyta"
+  ]
+ },
+ {
+  "name": "Mutated zygomites",
+  "targets": [
+   "Zygomite",
+   "Fungi"
+  ]
+ },
+ {
+  "name": "Nechryael",
+  "targets": [
+   "Nechryarch"
+  ]
+ },
+ {
+  "name": "Ogres",
+  "targets": [
+   "Enclave guard",
+   "Mogre",
+   "Ogress",
+   "Skogre",
+   "Zogre"
+  ]
+ },
+ {
+  "name": "Otherworldly beings",
+  "targets": []
+ },
+ {
+  "name": "The Phantom Muspah",
+  "targets": []
+ },
+ {
+  "name": "Pirates",
+  "targets": [
+   "Pirate"
+  ]
+ },
+ {
+  "name": "Pyrefiends",
+  "targets": [
+   "Flaming pyrelord"
+  ]
+ },
+ {
+  "name": "Rats",
+  "targets": []
+ },
+ {
+  "name": "Red dragons",
+  "targets": []
+ },
+ {
+  "name": "Revenants",
+  "targets": []
+ },
+ {
+  "name": "Rockslugs",
+  "targets": []
+ },
+ {
+  "name": "Rogues",
+  "targets": []
+ },
+ {
+  "name": "Sarachnis",
+  "targets": []
+ },
+ {
+  "name": "Scabarites",
+  "targets": [
+   "Scarab swarm",
+   "Locust rider",
+   "Scarab mage",
+   "Small Scarab"
+  ]
+ },
+ {
+  "name": "Scorpia",
+  "targets": []
+ },
+ {
+  "name": "Scorpions",
+  "targets": [
+   "Scorpia",
+   "Lobstrosity"
+  ]
+ },
+ {
+  "name": "Sea snakes",
+  "targets": []
+ },
+ {
+  "name": "Shades",
+  "targets": [
+   "Loar",
+   "Phrin",
+   "Riyl",
+   "Asyn",
+   "Fiyr",
+   "Urium"
+  ]
+ },
+ {
+  "name": "Shadow warriors",
+  "targets": []
+ },
+ {
+  "name": "The Shellbane Gryphon",
+  "targets": []
+ },
+ {
+  "name": "Skeletal wyverns",
+  "targets": []
+ },
+ {
+  "name": "Skeletons",
+  "targets": [
+   "Vet'ion",
+   "Calvar'ion",
+   "Skeletal Mystic"
+  ]
+ },
+ {
+  "name": "Smoke devils",
+  "targets": []
+ },
+ {
+  "name": "Sourhogs",
+  "targets": []
+ },
+ {
+  "name": "Spiders",
+  "targets": [
+   "Kalrag",
+   "Sarachnis",
+   "Venenatis",
+   "Spindel",
+   "Araxxor",
+   "Araxyte"
+  ]
+ },
+ {
+  "name": "Spiritual creatures",
+  "targets": [
+   "Spiritual ranger",
+   "Spiritual mage",
+   "Spiritual warrior"
+  ]
+ },
+ {
+  "name": "Suqahs",
+  "targets": []
+ },
+ {
+  "name": "Terror dogs",
+  "targets": []
+ },
+ {
+  "name": "The Leviathan",
+  "targets": []
+ },
+ {
+  "name": "The Whisperer",
+  "targets": []
+ },
+ {
+  "name": "The Thermonuclear Smoke Devil",
+  "targets": []
+ },
+ {
+  "name": "Trolls",
+  "targets": [
+   "Dad",
+   "Arrg",
+   "Stick",
+   "Kraka",
+   "Pee Hat",
+   "Rock",
+   "Twig",
+   "Berry"
+  ]
+ },
+ {
+  "name": "Turoth",
+  "targets": []
+ },
+ {
+  "name": "Tzhaar",
+  "targets": [
+   "TzTok-Jad",
+   "TzKal-Zuk"
+  ]
+ },
+ {
+  "name": "Vampyres",
+  "targets": [
+   "Vyrewatch"
+  ]
+ },
+ {
+  "name": "Vardorvis",
+  "targets": []
+ },
+ {
+  "name": "Venators",
+  "targets": []
+ },
+ {
+  "name": "Venenatis",
+  "targets": []
+ },
+ {
+  "name": "Vet'ion",
+  "targets": []
+ },
+ {
+  "name": "Vorkath",
+  "targets": []
+ },
+ {
+  "name": "Wall beasts",
+  "targets": []
+ },
+ {
+  "name": "Warped Creatures",
+  "targets": [
+   "Warped terrorbird",
+   "Warped tortoise",
+   "Mutated terrorbird",
+   "Mutated tortoise"
+  ]
+ },
+ {
+  "name": "Waterfiends",
+  "targets": []
+ },
+ {
+  "name": "Werewolves",
+  "targets": [
+   "Werewolf"
+  ]
+ },
+ {
+  "name": "Wolves",
+  "targets": [
+   "Wolf"
+  ]
+ },
+ {
+  "name": "Wyrms",
+  "targets": [
+   "Wyrmling",
+   "Strykewyrm"
+  ]
+ },
+ {
+  "name": "Commander Zilyana",
+  "targets": []
+ },
+ {
+  "name": "Zombies",
+  "targets": [
+   "Undead",
+   "Vorkath",
+   "Zogre"
+  ]
+ },
+ {
+  "name": "TzKal-Zuk",
+  "targets": []
+ },
+ {
+  "name": "Zulrah",
+  "targets": []
+ }
+]

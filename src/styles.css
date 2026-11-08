@@ -226,3 +226,32 @@ select, .skills input {
 .fight-info ul { margin: 4px 0; padding-left: 18px; }
 .fight-info p { max-width: 75ch; }
 .missing { margin-top: 10px; color: var(--coin); font-size: 0.95rem; }
+
+/* ---------- slayer ---------- */
+.task-row { margin: 10px 0 6px; min-height: 30px; }
+.current-task {
+  background: var(--slab); border: 1px solid var(--coin); border-radius: var(--r-small);
+  padding: 5px 12px; cursor: pointer; font-weight: 600;
+}
+.current-task[aria-pressed='true'] { background: var(--slab-2); }
+.current-task .dim { font-weight: 400; margin-left: 6px; }
+.slayer { max-width: 1100px; }
+.slayer-meta { margin-bottom: 10px; }
+.slayer-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.slayer-table th { text-align: left; font-weight: 500; color: var(--bone-dim); padding: 6px 10px; border-bottom: 1px solid var(--seam); white-space: nowrap; }
+.slayer-table th.num, .slayer-table td.num { text-align: right; }
+.slayer-table th button { background: none; border: none; padding: 0; color: inherit; cursor: pointer; font: inherit; }
+.slayer-table th[aria-sort='descending'] button { color: var(--bone); text-decoration: underline; text-underline-offset: 4px; }
+.slayer-table th.fam-melee button, .slayer-table th.fam-ranged button, .slayer-table th.fam-magic button { color: var(--fam); }
+.slayer-table td { padding: 7px 10px; border-bottom: 1px solid var(--slab-2); }
+.slayer-table tbody tr { cursor: pointer; }
+.slayer-table tbody tr:hover, .slayer-table tbody tr:focus-visible { background: var(--slab); }
+.mon-name { font-weight: 600; }
+.mon-versions { display: block; font-size: 0.85rem; }
+.dps-cell { color: var(--bone-dim); }
+.dps-cell.is-best { color: var(--fam); font-weight: 700; }
+.pending { display: inline-block; width: 28px; height: 8px; border-radius: 4px; background: var(--slab-2); animation: pulse 1s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: 0.35; } to { opacity: 1; } }
+@media (max-width: 720px) {
+  .slayer-table th:nth-child(2), .slayer-table td:nth-child(2), .slayer-table th:nth-child(3), .slayer-table td:nth-child(3) { display: none; }
+}

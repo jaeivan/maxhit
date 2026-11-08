@@ -4,12 +4,14 @@
 - Gear optimizer: best owned loadout per style, GE upgrades, budget plan
 - RuneLite plugin exporting bank, worn gear, inventory, levels and quest progress
 - Quest gear: per-fight recommendations that follow each fight's rules (108 fights, 57 quests)
+- Slayer: every monster on a task with your DPS per style; plugin reads your current task
 
 ## Next
 - Quest data: recheck fight rules each time the wiki changes; add fights from new quests
 - **GitHub Pages version**: plugin serves its data on localhost instead of only writing a file; page calls
   the wiki price API directly (or a scheduled Action publishes prices); Action builds and deploys the site
-- **Plugin auto-detects** current slayer task and unlocked prayers (Rigour, Augury, Deadeye, Mystic Vigour)
+- **Plugin auto-detects** unlocked prayers (Rigour, Augury, Deadeye, Mystic Vigour)
+- Slayer: task locations, superior variants, and boss-specific mechanics (e.g. demonic gorilla prayer switching)
 - **Untradeable upgrades** with where they come from (fire/infernal cape, Barrows gloves, defenders, quest rewards)
 - Count ammo cost in the budget; read the blowpipe's loaded dart
 - More owned-item sources: POH costume room, group storage, looting bag

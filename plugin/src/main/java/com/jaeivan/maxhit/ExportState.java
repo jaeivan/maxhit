@@ -23,6 +23,32 @@ class ExportState
 	/** Quest name (as RuneLite names it) -> NOT_STARTED or IN_PROGRESS. Finished quests are left out. */
 	Map<String, String> unfinishedQuests;
 	long questsUpdatedAt;
+	/** Current slayer assignment, or null when you have none. */
+	SlayerTask slayerTask;
+
+	static class SlayerTask
+	{
+		/** Task name as the game's slayer table spells it (e.g. "Abyssal demons"). */
+		String name;
+		int remaining;
+
+		@Override
+		public boolean equals(Object o)
+		{
+			if (!(o instanceof SlayerTask))
+			{
+				return false;
+			}
+			SlayerTask t = (SlayerTask) o;
+			return remaining == t.remaining && java.util.Objects.equals(name, t.name);
+		}
+
+		@Override
+		public int hashCode()
+		{
+			return java.util.Objects.hash(name, remaining);
+		}
+	}
 
 	ExportState normalized()
 	{

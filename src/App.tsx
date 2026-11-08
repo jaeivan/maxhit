@@ -9,11 +9,15 @@ import {
 } from './optimizer';
 import { ALL_FIGHTS, Fight, QUEST_FIGHTS, styleRule } from './data/quests';
 import { FIGHT_MONSTER } from './fights';
-import type { WorkRequest, WorkResponse } from './worker';
+import { CurrentTask, SlayerPicker, SlayerTable } from './SlayerView';
+import { targetsForTask } from './slayer';
+import type { SlayerRow } from './slayerRun';
+import type { SlayerRequest, WorkRequest, WorkResponse } from './worker';
 
 // ---------- persisted settings ----------
 interface Settings {
-  mode: 'monsters' | 'quests';
+  mode: 'monsters' | 'quests' | 'slayer';
+  slayerTask: string | null;
   questName: string | null;
   fightId: string | null;
   monsterIndex: number;
@@ -32,6 +36,7 @@ const DEFAULT_MONSTER = Math.max(0, monsters.findIndex((m) => m.name === 'Vorkat
 function defaultSettings(): Settings {
   return {
     mode: 'monsters',
+    slayerTask: null,
     questName: null,
     fightId: null,
     monsterIndex: DEFAULT_MONSTER,
@@ -78,6 +83,8 @@ interface ExportState {
   skills: Partial<PlayerSkills>; bank: number[]; worn: number[]; inventory: number[];
   /** Quest name -> NOT_STARTED | IN_PROGRESS; finished quests are absent. Missing entirely = not read yet. */
   unfinishedQuests?: Record<string, string>;
+  /** Current slayer assignment; null = none, absent = not read yet. */
+  slayerTask?: CurrentTask | null;
 }
 
 // ---------- formatting ----------
@@ -173,6 +180,11 @@ export default function App() {
 
   // ---------- workers ----------
   const workers = useRef<Record<Family, Worker> | null>(null);
+  // slayer rows are cached per gear/levels/boosts signature, so revisiting a task is instant
+  const slayerCache = useRef(new Map<string, Map<string, SlayerRow>>());
+  const slayerReqId = useRef(0);
+  const [slayerTick, setSlayerTick] = useState(0);
+  const onSlayerRows = useRef<(m: Extract<WorkResponse, { kind: 'slayer' }>) => void>(() => {});
   const reqId = useRef(0);
   const [results, setResults] = useState<Record<Family, { phase: 'owned' | 'full'; r: FamilyResult; id: number } | null>>({ melee: null, ranged: null, magic: null });
   const [pending, setPending] = useState(false);
@@ -182,6 +194,7 @@ export default function App() {
     for (const f of FAMILIES) {
       w[f] = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
       w[f].onmessage = (e: MessageEvent<WorkResponse>) => {
+        if (e.data.kind === 'slayer') { onSlayerRows.current(e.data); return; }
         const { id, family, phase, result, error } = e.data;
         if (error) { console.error(error); return; }
         if (id !== reqId.current) return;
@@ -193,7 +206,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!workers.current || !exp) return;
+    if (!workers.current || !exp || settings.mode === 'slayer') return;
     const id = ++reqId.current;
     setPending(true);
     for (const f of FAMILIES) {
@@ -204,7 +217,46 @@ export default function App() {
       };
       workers.current[f].postMessage(req);
     }
-  }, [exp, activeMonsterIndex, fight, skills, buffs, ownedIds, settings.excluded, settings.spellbooks, prices, settings.budget]);
+  }, [exp, activeMonsterIndex, fight, skills, buffs, ownedIds, settings.excluded, settings.spellbooks, prices, settings.budget, settings.mode]);
+
+  // ---------- slayer ----------
+  const slayerSig = useMemo(() => JSON.stringify([skills, buffs, ownedIds, settings.excluded, settings.spellbooks]),
+    [skills, buffs, ownedIds, settings.excluded, settings.spellbooks]);
+  const slayerRows = useMemo(() => {
+    let m = slayerCache.current.get(slayerSig);
+    if (!m) { m = new Map(); slayerCache.current.set(slayerSig, m); }
+    return m;
+  }, [slayerSig, slayerTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  onSlayerRows.current = (msg) => {
+    if (msg.id !== slayerReqId.current) return;
+    for (const r of msg.rows) {
+      const k = `${r.family}:${r.monsterIndex}`;
+      if (!slayerRows.get(k)?.exact || r.exact) slayerRows.set(k, r); // never replace an exact row with a quick one
+    }
+    setSlayerTick((t) => t + 1);
+  };
+  useEffect(() => {
+    if (!workers.current || !exp || settings.mode !== 'slayer' || !settings.slayerTask) return;
+    const id = ++slayerReqId.current;
+    const indices = targetsForTask(settings.slayerTask).map((t) => t.index);
+    for (const f of FAMILIES) {
+      const quickIndices = indices.filter((i) => !slayerRows.has(`${f}:${i}`));
+      const exactIndices = indices.filter((i) => !slayerRows.get(`${f}:${i}`)?.exact);
+      if (!exactIndices.length) continue;
+      const req: SlayerRequest = {
+        kind: 'slayer', id, family: f, quickIndices, exactIndices, skills, buffs, ownedIds,
+        excluded: settings.excluded, spellbooks: settings.spellbooks,
+      };
+      workers.current[f].postMessage(req);
+    }
+  }, [exp, settings.mode, settings.slayerTask, slayerSig]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // first visit to the Slayer tab: start on your current task
+  useEffect(() => {
+    if (settings.mode === 'slayer' && !settings.slayerTask && exp?.slayerTask?.name) {
+      patch({ slayerTask: exp.slayerTask.name });
+    }
+  }, [settings.mode, exp?.slayerTask?.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const done = FAMILIES.every((f) => results[f]?.id === reqId.current && (results[f]?.phase === 'full' || !prices || !results[f]?.r.best));
@@ -223,11 +275,15 @@ export default function App() {
       <nav className="modes" aria-label="What to plan for">
         <button type="button" aria-pressed={settings.mode === 'monsters'} onClick={() => patch({ mode: 'monsters' })}>Monsters</button>
         <button type="button" aria-pressed={settings.mode === 'quests'} onClick={() => patch({ mode: 'quests' })}>Quests</button>
+        <button type="button" aria-pressed={settings.mode === 'slayer'} onClick={() => patch({ mode: 'slayer' })}>Slayer</button>
       </nav>
       <header className="top">
-        {settings.mode === 'monsters'
-          ? <MonsterPicker monster={monster} onPick={selectMonster} recent={settings.recent} />
-          : <QuestPicker exp={exp} questName={settings.questName} fightId={settings.fightId}
+        {settings.mode === 'slayer' && (
+          <SlayerPicker taskName={settings.slayerTask} current={exp?.slayerTask}
+            onPick={(slayerTask) => patch({ slayerTask })} />
+        )}
+        {settings.mode === 'monsters' && <MonsterPicker monster={monster} onPick={selectMonster} recent={settings.recent} />}
+        {settings.mode === 'quests' && <QuestPicker exp={exp} questName={settings.questName} fightId={settings.fightId}
               onPick={(questName, fightId) => patch({ questName, fightId })} />}
         <div className="status">
           <SyncStatus exp={exp} error={expError} />
@@ -235,10 +291,12 @@ export default function App() {
             {priceError ? 'GE prices unavailable, showing owned gear only' : prices ? `${prices.length.toLocaleString()} GE prices loaded` : 'Loading GE prices'}
           </span>
           <BudgetInput value={settings.budget} onChange={(budget) => patch({ budget })} />
-          <label className="check">
-            <input type="checkbox" checked={settings.onTask} onChange={(e) => patch({ onTask: e.target.checked })} />
-            On slayer task
-          </label>
+          {settings.mode !== 'slayer' && (
+            <label className="check">
+              <input type="checkbox" checked={settings.onTask} onChange={(e) => patch({ onTask: e.target.checked })} />
+              On slayer task
+            </label>
+          )}
           <button type="button" className="ghost" onClick={() => setShowSettings((v) => !v)} aria-expanded={showSettings}>
             {showSettings ? 'Close settings' : 'Settings'}
           </button>
@@ -251,6 +309,14 @@ export default function App() {
 
       {!exp && <EmptyState error={expError} />}
 
+      {exp && settings.mode === 'slayer' && settings.slayerTask && (
+        <SlayerTable taskName={settings.slayerTask} rows={slayerRows}
+          onOpen={(monsterIndex) => patch({ mode: 'monsters', monsterIndex, onTask: true,
+            recent: [monsterIndex, ...settings.recent.filter((x) => x !== monsterIndex)].slice(0, 8) })} />
+      )}
+      {exp && settings.mode === 'slayer' && !settings.slayerTask && (
+        <section className="empty"><p>Pick a task to see every monster that counts for it and your DPS on each.</p></section>
+      )}
       {exp && fight && <FightInfo fight={fight} />}
       {exp && settings.mode === 'quests' && !fight && (
         <section className="empty"><p>Pick a quest and one of its fights to see what to bring.</p></section>

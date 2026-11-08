@@ -108,6 +108,8 @@ export interface OptimizeInput {
   spellbooks: Spellbook[];
   families?: Family[];
   fight?: Fight;
+  /** Lighter search (fewer weapon finalists, one polish pass) for overview tables. */
+  quick?: boolean;
 }
 
 export interface Loadout {
@@ -204,6 +206,7 @@ class Search {
     readonly f: Family, readonly monster: Monster, buffs: Buffs,
     readonly pool: Map<Slot, Cand[]>, readonly weapons: WeaponOpt[],
     readonly rule?: StyleRule,
+    readonly quick = false,
   ) {
     this.player = basePlayer({ ...SKILLS_PLACEHOLDER }, buffs);
     this.adjust = makeAdjust(rule);
@@ -288,7 +291,7 @@ class Search {
       .sort((a, b) => b.r!.dps - a.r!.dps);
     // 4. full descent for the top few weapons (and any weapon that belongs to a seeded set)
     const setWeaponIds = new Set(seeds.map((s) => s.weapon?.id).filter(Boolean));
-    const finalists = ranked.filter((x, i) => i < 4 || setWeaponIds.has(x.w.weapon?.id));
+    const finalists = ranked.filter((x, i) => i < (this.quick ? 2 : 4) || setWeaponIds.has(x.w.weapon?.id));
     const results: { lo: Loadout; w: WeaponOpt }[] = [];
     for (const { w } of finalists) {
       const starts = [base.eq, ...seeds.filter((s) => !s.weapon || s.weapon.id === w.weapon?.id)];
@@ -305,7 +308,7 @@ class Search {
       const key = SLOTS.map((k) => lo.equipment[k]?.id ?? 0).join(',');
       if (seen.has(key)) continue;
       seen.add(key);
-      if (seen.size > 3) break;
+      if (seen.size > (this.quick ? 1 : 3)) break;
       const d = this.descend(lo.equipment, w, 3, false);
       const cand = d && d.r.dps > lo.result.dps ? { ...lo, equipment: d.eq, result: d.r } : lo;
       if (!best || cand.result.dps > best.result.dps) best = cand;
@@ -384,7 +387,18 @@ function buildPool(f: Family, cands: Cand[], skills: PlayerSkills, rule?: StyleR
   return pool;
 }
 
-function seedsFromSets(cands: Cand[]): PlayerEquipment[] {
+/** Which combat styles a set can help: by its weapon if it has one, else by its helm. */
+function setFamilies(pieces: EquipmentPiece[]): Family[] {
+  const weapon = pieces.find((p) => p.slot === 'weapon');
+  if (weapon) return FAMILIES.filter((f) => weaponFits(weapon, f));
+  const names = pieces.map((p) => p.name.toLowerCase()).join('|');
+  if (names.includes('void melee helm') || names.includes('obsidian') || names.includes('justiciar')) return ['melee'];
+  if (names.includes('void ranger helm')) return ['ranged'];
+  if (names.includes('void mage helm')) return ['magic'];
+  return FAMILIES;
+}
+
+function seedsFromSets(cands: Cand[], family?: Family): PlayerEquipment[] {
   const byName = new Map<string, EquipmentPiece>();
   for (const c of cands) {
     const n = c.item.name.toLowerCase();
@@ -396,6 +410,7 @@ function seedsFromSets(cands: Cand[]): PlayerEquipment[] {
   for (const set of meta.sets as string[][]) {
     const pieces = set.map((n) => byName.get(n.toLowerCase()));
     if (pieces.some((p) => !p)) continue;
+    if (family && !setFamilies(pieces as EquipmentPiece[]).includes(family)) continue;
     const eq = emptyEquipment();
     for (const p of pieces) eq[p!.slot] = p!;
     seeds.push(eq);
@@ -435,10 +450,10 @@ function optimizeFamily(f: Family, input: OptimizeInput, cands: Cand[]): { best:
   const weaponsC = (pool.get('weapon') ?? []).map((c) => ({ ...c, item: withBlowpipeDart(c.item, darts) }));
   const spellList = f === 'magic' ? topSpells(input, 4, rule) : [];
   const wopts = buildWeaponOpts(f, weaponsC, pool.get('ammo') ?? [], spellList, rule);
-  const s = new Search(f, input.monster, input.buffs[f], pool, wopts, rule);
+  const s = new Search(f, input.monster, input.buffs[f], pool, wopts, rule, !!input.quick);
   s.player.skills = { ...input.skills };
   s.player.boosts = basePlayer(input.skills, input.buffs[f]).boosts;
-  const seeds = seedsFromSets(cands.filter((c) => meetsReqs(c.item, input.skills)));
+  const seeds = seedsFromSets(cands.filter((c) => meetsReqs(c.item, input.skills)), f);
   return { best: s.run(seeds), evals: s.evals };
 }
 

@@ -32,7 +32,10 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.StatChanged;
+import net.runelite.api.gameval.DBTableID;
 import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.RuneLite;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.Subscribe;
@@ -93,6 +96,11 @@ public class MaxHitPlugin extends Plugin
 	private ExportState state;
 	private ScheduledFuture<?> pendingWrite;
 	private int ticksUntilQuestCheck;
+	private int lastSlayerCount = -1;
+	private int lastSlayerTarget = -1;
+	private int lastSlayerBoss = -1;
+	/** SLAYER_TARGET value meaning "a boss task" (from RuneLite's slayer plugin). */
+	private static final int SLAYER_TARGET_BOSS = 98;
 
 	@Override
 	protected void startUp()
@@ -144,6 +152,8 @@ public class MaxHitPlugin extends Plugin
 		readSkills();
 		readQuests();
 		ticksUntilQuestCheck = QUEST_CHECK_TICKS;
+		lastSlayerCount = lastSlayerTarget = lastSlayerBoss = -1;
+		readSlayerTask();
 		readContainer(InventoryID.WORN);
 		readContainer(InventoryID.INV);
 		readContainer(InventoryID.BANK); // only present if the bank is open
@@ -175,15 +185,82 @@ public class MaxHitPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick tick)
 	{
-		if (state == null || --ticksUntilQuestCheck > 0)
+		if (state == null)
 		{
 			return;
 		}
-		ticksUntilQuestCheck = QUEST_CHECK_TICKS;
-		if (readQuests())
+		boolean changed = readSlayerTask();
+		if (--ticksUntilQuestCheck <= 0)
+		{
+			ticksUntilQuestCheck = QUEST_CHECK_TICKS;
+			changed |= readQuests();
+		}
+		if (changed)
 		{
 			scheduleWrite();
 		}
+	}
+
+	/**
+	 * Current slayer task, resolved the same way as RuneLite's slayer plugin (varps + slayer DB tables).
+	 * Only does the DB lookup when the task varps change.
+	 * @return true if the exported task changed
+	 */
+	private boolean readSlayerTask()
+	{
+		int count = client.getVarpValue(VarPlayerID.SLAYER_COUNT);
+		int target = client.getVarpValue(VarPlayerID.SLAYER_TARGET);
+		int boss = client.getVarbitValue(VarbitID.SLAYER_TARGET_BOSSID);
+		if (count == lastSlayerCount && target == lastSlayerTarget && boss == lastSlayerBoss)
+		{
+			return false;
+		}
+		lastSlayerCount = count;
+		lastSlayerTarget = target;
+		lastSlayerBoss = boss;
+
+		ExportState.SlayerTask task = null;
+		if (count > 0)
+		{
+			String name = slayerTaskName(target, boss);
+			if (name != null)
+			{
+				task = new ExportState.SlayerTask();
+				task.name = name;
+				task.remaining = count;
+			}
+		}
+		if (java.util.Objects.equals(task, state.slayerTask))
+		{
+			return false;
+		}
+		state.slayerTask = task;
+		return true;
+	}
+
+	private String slayerTaskName(int target, int boss)
+	{
+		int taskRow;
+		if (target == SLAYER_TARGET_BOSS)
+		{
+			List<Integer> bossRows = client.getDBRowsByValue(
+				DBTableID.SlayerTaskSublist.ID, DBTableID.SlayerTaskSublist.COL_TASK_SUBTABLE_ID, 0, boss);
+			if (bossRows.isEmpty())
+			{
+				return null;
+			}
+			taskRow = (Integer) client.getDBTableField(bossRows.get(0), DBTableID.SlayerTaskSublist.COL_TASK, 0)[0];
+		}
+		else
+		{
+			List<Integer> rows = client.getDBRowsByValue(DBTableID.SlayerTask.ID, DBTableID.SlayerTask.COL_ID, 0, target);
+			if (rows.isEmpty())
+			{
+				return null;
+			}
+			taskRow = rows.get(0);
+		}
+		return (String) client.getDBTableField(taskRow, DBTableID.SlayerTask.COL_NAME_UPPERCASE, 0)[0];
 	}
 
 	/**
