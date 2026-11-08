@@ -1,11 +1,11 @@
-package com.jaeivan.gearopt;
+package com.jaeivan.maxhit;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** The JSON written to ~/.runelite/gear-optimizer/&lt;account&gt;.json. Field names are the file format. */
+/** The JSON written to ~/.runelite/maxhit/&lt;account&gt;.json. Field names are the file format. */
 class ExportState
 {
 	int version = 1;

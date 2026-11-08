@@ -20,7 +20,7 @@ index 074ea2f..fa9128f 100644
 -  }
 -  return itemId;
 -};
-+// gearopt patch: O(1) reverse-alias lookup (was a linear scan over every alias on each call)
++// maxhit patch: O(1) reverse-alias lookup (was a linear scan over every alias on each call)
 +const canonicalIdByAlias = new Map<number, number>();
 +for (const [k, v] of Object.entries(equipmentAliases)) {
 +  for (const id of v) if (!canonicalIdByAlias.has(id)) canonicalIdByAlias.set(id, parseInt(k));

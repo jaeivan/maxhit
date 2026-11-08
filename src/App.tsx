@@ -40,7 +40,7 @@ function defaultSettings(): Settings {
 }
 function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem('gearopt.settings');
+    const raw = localStorage.getItem('maxhit.settings');
     if (raw) return { ...defaultSettings(), ...JSON.parse(raw) };
   } catch { /* storage unavailable */ }
   return defaultSettings();
@@ -93,7 +93,7 @@ const img = (e: EquipmentPiece) => `/img/equipment/${encodeURIComponent(e.image)
 export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const patch = useCallback((p: Partial<Settings>) => setSettings((s) => ({ ...s, ...p })), []);
-  useEffect(() => { try { localStorage.setItem('gearopt.settings', JSON.stringify(settings)); } catch { /* ignore */ } }, [settings]);
+  useEffect(() => { try { localStorage.setItem('maxhit.settings', JSON.stringify(settings)); } catch { /* ignore */ } }, [settings]);
 
   const [exp, setExp] = useState<ExportState | null>(null);
   const [expError, setExpError] = useState<string | null>(null);
@@ -367,8 +367,8 @@ function EmptyState({ error }: { error: string | null }) {
     <section className="empty">
       <h2>Connect RuneLite</h2>
       <p>
-        The optimizer reads the file the Gear Optimizer Export plugin writes to
-        <code> ~/.runelite/gear-optimizer/</code>. Start RuneLite with the plugin enabled, log in, and open your bank once.
+        The optimizer reads the file the MaxHit plugin writes to
+        <code> ~/.runelite/maxhit/</code>. Start RuneLite with the plugin enabled, log in, and open your bank once.
         This page updates by itself as soon as the file appears.
       </p>
       {error && <p className="dim">Details: {error}</p>}

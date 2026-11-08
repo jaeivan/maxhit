@@ -14,7 +14,7 @@ repositories {
 }
 
 def runeLiteVersion = 'latest.release'
-def pluginMainClass = 'com.jaeivan.gearopt.GearExportPluginTest'
+def pluginMainClass = 'com.jaeivan.maxhit.MaxHitPluginTest'
 
 dependencies {
 	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
@@ -27,7 +27,7 @@ dependencies {
 	testImplementation group: 'net.runelite', name:'jshell', version: runeLiteVersion
 }
 
-group = 'com.jaeivan.gearopt'
+group = 'com.jaeivan.maxhit'
 version = '1.0-SNAPSHOT'
 
 tasks.withType(JavaCompile).configureEach {

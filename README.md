@@ -1,12 +1,12 @@
-# Gear optimizer
+# MaxHit
 
-A personal OSRS gear optimizer. Pick a monster. For melee, ranged and magic, it shows the best setup
+A personal OSRS combat companion, built around RuneLite. The first tool is the gear optimizer: pick a monster. For melee, ranged and magic, it shows the best setup
 from what you own and which GE purchases would raise your DPS the most, overall and within a budget.
 Every number comes from the OSRS Wiki's own DPS calculator engine; this project only decides which
 loadouts to score.
 
 ```
-RuneLite + plugin ──writes──▶ ~/.runelite/gear-optimizer/<account>.json
+RuneLite + plugin ──writes──▶ ~/.runelite/maxhit/<account>.json
                                           │  (watched)
 local web app (Vite) ◀────────────────────┘    GE prices ◀── prices.runescape.wiki (proxied, cached 5 min)
    └─ 3 web workers (melee / ranged / magic) running the optimizer on the wiki DPS engine
@@ -30,7 +30,7 @@ The plugin isn't on the Plugin Hub, so it runs through RuneLite's developer laun
 
 ```bash
 cd plugin
-./gradlew run     # launches RuneLite with "Gear Optimizer Export" enabled
+./gradlew run     # launches RuneLite with the MaxHit plugin enabled
 ```
 
 If you log in with a Jagex account, the dev client needs your credentials written once. See RuneLite's
@@ -54,7 +54,7 @@ reports a compile error, it'll be a one-line API rename.
   (handy for "what if I had 99 ranged"), and excluded items.
 
 `npm run dev:offline` serves `./prices.json` (a saved copy of the wiki's `/latest` response) instead of
-calling the API. `GEAROPT_DIR` points the app at a different export folder.
+calling the API. `MAXHIT_DIR` points the app at a different export folder.
 
 ## How the search works
 

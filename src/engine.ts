@@ -60,8 +60,8 @@ function potionBoosts(skills: PlayerSkills, potions: Potion[]): PlayerSkills {
 
 export function basePlayer(skills: PlayerSkills, buffs: Buffs): Player {
   return {
-    uuid: 'gearopt',
-    name: 'gearopt',
+    uuid: 'maxhit',
+    name: 'maxhit',
     style: getCombatStylesForCategory(EquipmentCategory.NONE)[0],
     skills: { ...skills },
     boosts: potionBoosts(skills, buffs.potions),
@@ -129,7 +129,7 @@ export function evaluate(
   for (const style of styles) {
     player.style = style;
     player.attackSpeed = calculateAttackSpeed(player, monster);
-    const calc = new PlayerVsNPCCalc(player, monster, { loadoutName: 'gearopt' });
+    const calc = new PlayerVsNPCCalc(player, monster, { loadoutName: 'maxhit' });
     const dps = calc.getDps();
     if (!best || dps > best.dps) {
       best = {

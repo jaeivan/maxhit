@@ -4,11 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-// Where the RuneLite plugin writes its export. Override with GEAROPT_DIR if your .runelite lives elsewhere.
-const EXPORT_DIR = process.env.GEAROPT_DIR ?? path.join(os.homedir(), '.runelite', 'gear-optimizer');
+// Where the RuneLite plugin writes its export. Override with MAXHIT_DIR if your .runelite lives elsewhere.
+const EXPORT_DIR = process.env.MAXHIT_DIR ?? path.join(os.homedir(), '.runelite', 'maxhit');
 const ENGINE = path.resolve(__dirname, 'engine');
 // The wiki asks API users for a descriptive User-Agent.
-const USER_AGENT = process.env.GEAROPT_UA ?? 'gear-optimizer (personal RuneLite companion tool)';
+const USER_AGENT = process.env.MAXHIT_UA ?? 'maxhit (personal RuneLite companion tool)';
 const PRICE_TTL_MS = 5 * 60 * 1000;
 
 function newestExport(account?: string | null): string | null {
@@ -29,7 +29,7 @@ function localApi(): Plugin {
   const sse = new Set<import('node:http').ServerResponse>();
 
   return {
-    name: 'gearopt-local-api',
+    name: 'maxhit-local-api',
     configureServer(server) {
       // Push "state changed" to the page whenever the plugin rewrites its export
       try {
@@ -40,7 +40,7 @@ function localApi(): Plugin {
           t = setTimeout(() => { for (const res of sse) res.write('data: changed\n\n'); }, 200);
         });
       } catch (e) {
-        server.config.logger.warn(`[gearopt] cannot watch ${EXPORT_DIR}: ${e}`);
+        server.config.logger.warn(`[maxhit] cannot watch ${EXPORT_DIR}: ${e}`);
       }
 
       server.middlewares.use(async (req, res, next) => {
@@ -60,10 +60,10 @@ function localApi(): Plugin {
             req.on('close', () => sse.delete(res));
             return;
           }
-          if (url.pathname === '/api/prices' && process.env.GEAROPT_PRICES_FILE) {
+          if (url.pathname === '/api/prices' && process.env.MAXHIT_PRICES_FILE) {
             // offline/testing: serve a saved copy of the wiki's /latest response
             res.setHeader('content-type', 'application/json');
-            res.end(fs.readFileSync(process.env.GEAROPT_PRICES_FILE));
+            res.end(fs.readFileSync(process.env.MAXHIT_PRICES_FILE));
             return;
           }
           if (url.pathname === '/api/prices') {
@@ -100,7 +100,7 @@ function localApi(): Plugin {
 
 export default defineConfig(({ mode }) => {
   // `npm run dev:offline` serves ./prices.json instead of calling the wiki API
-  if (mode === 'offline' && !process.env.GEAROPT_PRICES_FILE) process.env.GEAROPT_PRICES_FILE = path.resolve(__dirname, 'prices.json');
+  if (mode === 'offline' && !process.env.MAXHIT_PRICES_FILE) process.env.MAXHIT_PRICES_FILE = path.resolve(__dirname, 'prices.json');
   return {
   plugins: [react(), localApi()],
   resolve: {

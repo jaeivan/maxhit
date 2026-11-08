@@ -1,4 +1,4 @@
-package com.jaeivan.gearopt;
+package com.jaeivan.maxhit;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
@@ -37,19 +37,19 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
 /**
- * Exports the data the gear optimizer needs to ~/.runelite/gear-optimizer/&lt;account&gt;.json.
+ * Exports the data the gear optimizer needs to ~/.runelite/maxhit/&lt;account&gt;.json.
  * Nothing leaves your machine: the optimizer's local dev server reads this file.
  * The bank is remembered between sessions; open your bank once after logging in to refresh it.
  */
 @Slf4j
 @PluginDescriptor(
-	name = "Gear Optimizer Export",
+	name = "MaxHit",
 	description = "Writes bank, worn gear, inventory and levels to a local file for the gear optimizer",
 	tags = {"gear", "bank", "dps", "export"}
 )
-public class GearExportPlugin extends Plugin
+public class MaxHitPlugin extends Plugin
 {
-	static final Path EXPORT_DIR = RuneLite.RUNELITE_DIR.toPath().resolve("gear-optimizer");
+	static final Path EXPORT_DIR = RuneLite.RUNELITE_DIR.toPath().resolve("maxhit");
 	private static final int NO_PLACEHOLDER = -1;
 	private static final long WRITE_DEBOUNCE_MS = 1500;
 
@@ -254,7 +254,7 @@ public class GearExportPlugin extends Plugin
 		}
 		catch (IOException e)
 		{
-			log.warn("Gear optimizer export failed", e);
+			log.warn("MaxHit export failed", e);
 		}
 	}
 
@@ -273,7 +273,7 @@ public class GearExportPlugin extends Plugin
 			}
 			catch (IOException | JsonSyntaxException e)
 			{
-				log.warn("Could not read previous gear optimizer export; starting fresh", e);
+				log.warn("Could not read previous MaxHit export; starting fresh", e);
 			}
 		}
 		return new ExportState().normalized();
