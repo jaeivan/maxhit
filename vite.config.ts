@@ -77,6 +77,18 @@ function localApi(): Plugin {
             res.end(priceCache.body);
             return;
           }
+          if (url.pathname === '/api/hiscores') {
+            // Jagex's hiscores don't allow browser requests from other sites, so the page asks through here
+            const player = (url.searchParams.get('player') ?? '').trim().slice(0, 12);
+            if (!player) { res.statusCode = 400; res.end(JSON.stringify({ error: 'player is required' })); return; }
+            const r = await fetch(`https://secure.runescape.com/m=hiscore_oldschool/index_lite.json?player=${encodeURIComponent(player)}`,
+              { headers: { 'User-Agent': USER_AGENT } });
+            res.setHeader('content-type', 'application/json');
+            if (r.status === 404) { res.statusCode = 404; res.end(JSON.stringify({ error: 'not found' })); return; }
+            if (!r.ok) throw new Error(`hiscores ${r.status}`);
+            res.end(await r.text());
+            return;
+          }
           if (url.pathname.startsWith('/img/')) {
             const rel = decodeURIComponent(url.pathname.slice(5));
             const p = path.join(ENGINE, 'cdn', rel);

@@ -255,3 +255,15 @@ select, .skills input {
 @media (max-width: 720px) {
   .slayer-table th:nth-child(2), .slayer-table td:nth-child(2), .slayer-table th:nth-child(3), .slayer-table td:nth-child(3) { display: none; }
 }
+
+/* ---------- import ---------- */
+.import .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.import textarea, .import .text {
+  background: var(--slab-2); border: 1px solid var(--seam); border-radius: var(--r-small); padding: 6px 8px;
+  color: var(--bone); font: inherit; min-width: 0;
+}
+.import textarea { width: 100%; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+.import .text { flex: 1 1 140px; }
+.import b { color: var(--bone); font-weight: 600; }
+.ghost:disabled { opacity: 0.5; cursor: default; }
+.ghost:disabled:hover { background: transparent; }

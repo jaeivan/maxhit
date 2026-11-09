@@ -12,6 +12,8 @@ import { FIGHT_MONSTER } from './fights';
 import { CurrentTask, SlayerPicker, SlayerTable } from './SlayerView';
 import { targetsForTask } from './slayer';
 import type { SlayerRow } from './slayerRun';
+import { emptyManual, type ManualData } from './imports';
+import { ImportPanel } from './ImportPanel';
 import type { SlayerRequest, WorkRequest, WorkResponse } from './worker';
 
 // ---------- persisted settings ----------
@@ -31,6 +33,8 @@ interface Settings {
   excluded: number[];
   includeInventory: boolean;
   manualSkills: PlayerSkills | null;
+  /** auto = plugin export when there is one, else imported data */
+  dataSource: 'auto' | 'plugin' | 'manual';
 }
 const DEFAULT_MONSTER = Math.max(0, monsters.findIndex((m) => m.name === 'Vorkath'));
 function defaultSettings(): Settings {
@@ -41,6 +45,7 @@ function defaultSettings(): Settings {
     fightId: null,
     monsterIndex: DEFAULT_MONSTER,
     recent: [],
+    dataSource: 'auto',
     budget: 50_000_000,
     onTask: false,
     kandarinDiary: true,
@@ -52,6 +57,14 @@ function defaultSettings(): Settings {
     manualSkills: null,
   };
 }
+function loadManual(): ManualData {
+  try {
+    const raw = localStorage.getItem('maxhit.manual');
+    if (raw) return { ...emptyManual(), ...JSON.parse(raw) };
+  } catch { /* storage unavailable */ }
+  return emptyManual();
+}
+
 function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem('maxhit.settings');
@@ -116,7 +129,16 @@ export default function App() {
     ? ALL_FIGHTS.find((f) => f.id === settings.fightId) ?? null : null;
   const activeMonsterIndex = fight ? FIGHT_MONSTER.get(fight.id) ?? settings.monsterIndex : settings.monsterIndex;
 
-  const [exp, setExp] = useState<ExportState | null>(null);
+  const [pluginExp, setExp] = useState<ExportState | null>(null);
+  const [manual, setManual] = useState<ManualData>(loadManual);
+  useEffect(() => { try { localStorage.setItem('maxhit.manual', JSON.stringify(manual)); } catch { /* ignore */ } }, [manual]);
+  const manualExp: ExportState | null = useMemo(() => (manual.bank.length || manual.worn.length ? {
+    rsn: manual.rsn, updatedAt: Math.max(manual.bankUpdatedAt, manual.wornUpdatedAt, manual.skillsUpdatedAt),
+    bankUpdatedAt: manual.bankUpdatedAt, skills: manual.skills, bank: manual.bank, worn: manual.worn, inventory: [],
+  } : null), [manual]);
+  const usingManual = settings.dataSource === 'manual' || (settings.dataSource === 'auto' && !pluginExp);
+  const exp = usingManual ? manualExp : pluginExp;
+  const [showImport, setShowImport] = useState(false);
   const [expError, setExpError] = useState<string | null>(null);
   const [prices, setPrices] = useState<[number, number][] | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
@@ -286,7 +308,7 @@ export default function App() {
         {settings.mode === 'quests' && <QuestPicker exp={exp} questName={settings.questName} fightId={settings.fightId}
               onPick={(questName, fightId) => patch({ questName, fightId })} />}
         <div className="status">
-          <SyncStatus exp={exp} error={expError} />
+          <SyncStatus exp={exp} error={expError} usingManual={usingManual} />
           <span className={priceError ? 'warn' : ''}>
             {priceError ? 'GE prices unavailable, showing owned gear only' : prices ? `${prices.length.toLocaleString()} GE prices loaded` : 'Loading GE prices'}
           </span>
@@ -297,6 +319,9 @@ export default function App() {
               On slayer task
             </label>
           )}
+          <button type="button" className="ghost" onClick={() => setShowImport((v) => !v)} aria-expanded={showImport}>
+            {showImport ? 'Close import' : 'Import'}
+          </button>
           <button type="button" className="ghost" onClick={() => setShowSettings((v) => !v)} aria-expanded={showSettings}>
             {showSettings ? 'Close settings' : 'Settings'}
           </button>
@@ -304,10 +329,16 @@ export default function App() {
       </header>
 
       {showSettings && (
-        <SettingsPanel settings={settings} patch={patch} skills={skills} fromPlugin={!!exp} />
+        <SettingsPanel settings={settings} patch={patch} skills={skills} levelsNote={!exp || !Object.keys(exp.skills).length ? 'No levels imported yet, using the values below.'
+          : usingManual ? `From ${manual.skillsFrom === 'wikisync' ? 'WikiSync' : 'the hiscores'}. Override a level to test a goal.`
+          : 'Read from RuneLite. Override a level to test a goal.'} />
       )}
 
-      {!exp && <EmptyState error={expError} />}
+      {(showImport || !exp) && (
+        <ImportPanel manual={manual} setManual={(f) => { setManual(f); setShowImport(true); }} pluginFound={!!pluginExp} usingManual={usingManual}
+          dataSource={settings.dataSource} setDataSource={(dataSource) => patch({ dataSource })}
+          intro={!exp ? <EmptyState error={pluginExp ? null : expError} /> : null} />
+      )}
 
       {exp && settings.mode === 'slayer' && settings.slayerTask && (
         <SlayerTable taskName={settings.slayerTask} rows={slayerRows}
@@ -427,9 +458,13 @@ function MonsterPicker({ monster, onPick, recent }: { monster: Monster; onPick: 
   );
 }
 
-function SyncStatus({ exp, error }: { exp: ExportState | null; error: string | null }) {
+function SyncStatus({ exp, error, usingManual }: { exp: ExportState | null; error: string | null; usingManual: boolean }) {
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
+  if (usingManual) {
+    if (!exp) return <span className="warn">No gear imported yet</span>;
+    return <span>{exp.rsn ?? 'Imported'}: {exp.bank.length ? `bank pasted ${ago(exp.bankUpdatedAt)}` : 'worn gear only, no bank pasted'}</span>;
+  }
   if (!exp) return <span className="warn">{error ? 'No RuneLite export found' : 'Reading RuneLite export'}</span>;
   if (!exp.bankUpdatedAt) return <span className="warn">{exp.rsn ?? 'Account'}: open your bank once so it can be read</span>;
   return <span>{exp.rsn ?? 'Account'}, bank synced {ago(exp.bankUpdatedAt)}</span>;
@@ -458,11 +493,10 @@ function BudgetInput({ value, onChange }: { value: number; onChange: (n: number)
 function EmptyState({ error }: { error: string | null }) {
   return (
     <section className="empty">
-      <h2>Connect RuneLite</h2>
+      <h2>Bring in your gear</h2>
       <p>
-        The optimizer reads the file the MaxHit plugin writes to
-        <code> ~/.runelite/maxhit/</code>. Start RuneLite with the plugin enabled, log in, and open your bank once.
-        This page updates by itself as soon as the file appears.
+        With the MaxHit plugin, this page reads <code>~/.runelite/maxhit/</code> and updates by itself.
+        Without it, use the import options below; they work with normal RuneLite and Plugin Hub plugins.
       </p>
       {error && <p className="dim">Details: {error}</p>}
     </section>
@@ -470,8 +504,8 @@ function EmptyState({ error }: { error: string | null }) {
 }
 
 // ---------- settings ----------
-function SettingsPanel({ settings, patch, skills, fromPlugin }: {
-  settings: Settings; patch: (p: Partial<Settings>) => void; skills: PlayerSkills; fromPlugin: boolean;
+function SettingsPanel({ settings, patch, skills, levelsNote }: {
+  settings: Settings; patch: (p: Partial<Settings>) => void; skills: PlayerSkills; levelsNote: string;
 }) {
   const excludedItems = settings.excluded.map((id) => equipment.find((e) => e.id === id)).filter(Boolean) as EquipmentPiece[];
   const toggleBook = (b: Spellbook) => patch({
@@ -515,7 +549,7 @@ function SettingsPanel({ settings, patch, skills, fromPlugin }: {
       </div>
       <div className="settings-group">
         <h3>Levels</h3>
-        <p className="dim">{fromPlugin ? 'Read from RuneLite. Override a level to test a goal.' : 'Not connected to RuneLite yet.'}</p>
+        <p className="dim">{levelsNote}</p>
         <div className="skills">
           {skillKeys.map(([k, label]) => (
             <label key={k}>

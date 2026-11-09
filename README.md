@@ -20,6 +20,16 @@ Log in and open your bank once. The plugin saves your bank, gear, inventory, lev
 `~/.runelite/maxhit/`, and the page updates by itself. With a Jagex account, the dev client needs a one-time
 login setup: see RuneLite's "Using Jagex Accounts" wiki page.
 
+### Without the plugin
+
+Skip the plugin and use **Import** in normal RuneLite with two Plugin Hub plugins:
+
+- **Bank Memory**: right-click its item list, copy the item data, paste it into Import. A list of item names works too.
+- **WikiSync**: *Sync from WikiSync* pulls worn gear and combat levels. Open the page at `localhost`, since WikiSync
+  only answers pages from localhost and the wiki. Or look up levels on the hiscores by name.
+
+You give up live updates (paste again after banking new gear) and quest/slayer auto-detection (pick them by hand).
+
 ## Use
 
 - `/` to search monsters. Click a gear slot to compare everything you own for it; click an upgrade to preview it.
@@ -28,7 +38,7 @@ login setup: see RuneLite's "Using Jagex Accounts" wiki page.
 - **Slayer** opens on your current task and lists every monster that counts for it (matched like RuneLite's slayer
   plugin), with your on-task DPS per style. Click a monster to see the full setup.
 - Settings: prayers, potions, spellbooks, level overrides, excluded items.
-- `npm test` runs a sample bank, `npm run test:quests` / `test:slayer` check the quest and slayer data, and
+- `npm test` runs a sample bank, `npm run test:quests` / `test:slayer` / `test:imports` check the quest, slayer and import data, and
   `npm run test:brute` compares the optimizer against brute force.
 
 ## Limits

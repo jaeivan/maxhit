@@ -5,11 +5,13 @@
 - RuneLite plugin exporting bank, worn gear, inventory, levels and quest progress
 - Quest gear: per-fight recommendations that follow each fight's rules (108 fights, 57 quests)
 - Slayer: every monster on a task with your DPS per style; plugin reads your current task
+- No-plugin mode: Bank Memory paste, WikiSync sync (worn gear, levels), hiscores lookup
 
 ## Next
 - Quest data: recheck fight rules each time the wiki changes; add fights from new quests
 - **GitHub Pages version**: plugin serves its data on localhost instead of only writing a file; page calls
-  the wiki price API directly (or a scheduled Action publishes prices); Action builds and deploys the site
+  the wiki price API directly (or a scheduled Action publishes prices); Action builds and deploys the site.
+  Import mode mostly works there already, except WikiSync (rejects non-wiki origins) and hiscores (no CORS)
 - **Plugin auto-detects** unlocked prayers (Rigour, Augury, Deadeye, Mystic Vigour)
 - Slayer: task locations, superior variants, and boss-specific mechanics (e.g. demonic gorilla prayer switching)
 - **Untradeable upgrades** with where they come from (fire/infernal cape, Barrows gloves, defenders, quest rewards)
@@ -27,7 +29,7 @@ Kingdom of Miscellania
 **Notifications**: push alerts when patches and bird houses are ready; manual timer reset from phone
 
 **Views**: bank viewer; drop log with rates; collection log / quest / diary / CA tracker; automatic trip
-log; weekly recap; skill guides; slayer hub; world map; hiscores lookup without the plugin
+log; weekly recap; skill guides; slayer hub; world map
 
 **Planning**: goal tree; boss battle plans; inventory and rune pouch layouts; DPS comparison of saved
 setups; farm route planner; collection log and achievement suggestions
